@@ -50,7 +50,12 @@ class DailyCloseDao extends DatabaseAccessor<AppDatabase> with _$DailyCloseDaoMi
         cogs = items.fold<int>(0, (sum, i) => sum + i.buyingPriceSnapshot * i.quantity);
       }
 
-      final expensesTotal = dayExpenses.fold<int>(0, (sum, e) => sum + e.amount);
+      // Amendment A1 (D4): stockPurchase rows reduce expected cash only —
+      // their cost reaches profit via COGS at sale time, so they're
+      // excluded here.
+      final expensesTotal = dayExpenses
+          .where((e) => e.category != ExpenseCategory.stockPurchase)
+          .fold<int>(0, (sum, e) => sum + e.amount);
       final cashExpenses = dayExpenses
           .where((e) => e.paymentMethod == PaymentMethod.cash)
           .fold<int>(0, (sum, e) => sum + e.amount);

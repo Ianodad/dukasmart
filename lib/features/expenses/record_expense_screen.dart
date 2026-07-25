@@ -117,6 +117,14 @@ class _RecordExpenseScreenState extends ConsumerState<RecordExpenseScreen> {
                   .toList(),
               onChanged: submitting ? null : (value) => setState(() => _category = value),
             ),
+            if (_category == ExpenseCategory.stockPurchase) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Cash taken from the till for stock. Reduces expected cash at '
+                'close, not profit — stock cost is counted when items sell.',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _descriptionController,

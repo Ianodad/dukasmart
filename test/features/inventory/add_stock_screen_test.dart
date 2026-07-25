@@ -19,4 +19,23 @@ void main() {
       expect(centsToInputString(5505), '55.05');
     });
   });
+
+  group('computeTillPrefillCents', () {
+    test('entered price wins over product price', () {
+      expect(computeTillPrefillCents(3, 200, 100), 600);
+    });
+
+    test('falls back to product price when none entered', () {
+      expect(computeTillPrefillCents(3, null, 100), 300);
+    });
+
+    test('null when no price is known', () {
+      expect(computeTillPrefillCents(3, null, null), isNull);
+    });
+
+    test('null when qty <= 0', () {
+      expect(computeTillPrefillCents(0, 200, 100), isNull);
+      expect(computeTillPrefillCents(-1, 200, 100), isNull);
+    });
+  });
 }

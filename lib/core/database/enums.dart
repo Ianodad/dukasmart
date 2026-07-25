@@ -40,6 +40,7 @@ enum PaymentMethod {
 
 enum ExpenseCategory {
   stockTransport,
+  stockPurchase,
   electricity,
   airtime,
   food,
@@ -50,6 +51,7 @@ enum ExpenseCategory {
 
   String get label => switch (this) {
         ExpenseCategory.stockTransport => 'Stock transport',
+        ExpenseCategory.stockPurchase => 'Stock purchase',
         ExpenseCategory.electricity => 'Electricity',
         ExpenseCategory.airtime => 'Airtime',
         ExpenseCategory.food => 'Food',

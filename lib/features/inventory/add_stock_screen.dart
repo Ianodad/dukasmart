@@ -20,6 +20,22 @@ String centsToInputString(int cents) {
   return '$shillings.${remainder.toString().padLeft(2, '0')}';
 }
 
+/// Prefill for the "Amount paid from till" field (Amendment A1): `qty ×
+/// price`, preferring the entered buying price over the product's current
+/// buying price. Returns `null` when there's nothing sensible to prefill
+/// (no known price, or a non-positive quantity) — the field then starts
+/// empty and the user must enter an amount themselves.
+int? computeTillPrefillCents(
+  int qty,
+  int? enteredBuyingPriceCents,
+  int? productBuyingPriceCents,
+) {
+  if (qty <= 0) return null;
+  final price = enteredBuyingPriceCents ?? productBuyingPriceCents;
+  if (price == null) return null;
+  return qty * price;
+}
+
 /// Add Stock (route `/home/add-stock`).
 class AddStockScreen extends ConsumerStatefulWidget {
   const AddStockScreen({super.key, this.productId});
@@ -37,10 +53,13 @@ class _AddStockScreenState extends ConsumerState<AddStockScreen> {
   final _qtyController = TextEditingController();
   final _priceController = TextEditingController();
   final _noteController = TextEditingController();
+  final _tillCashOutController = TextEditingController();
 
   bool _submitting = false;
+  bool _paidFromTill = false;
   String? _qtyError;
   String? _priceError;
+  String? _tillCashOutError;
 
   @override
   void initState() {
@@ -53,6 +72,7 @@ class _AddStockScreenState extends ConsumerState<AddStockScreen> {
     _qtyController.dispose();
     _priceController.dispose();
     _noteController.dispose();
+    _tillCashOutController.dispose();
     super.dispose();
   }
 
@@ -73,17 +93,29 @@ class _AddStockScreenState extends ConsumerState<AddStockScreen> {
       newPrice = NumericInputField.parseValue(priceText, NumericInputMode.money);
     }
 
+    int? tillCashOutCents;
+    if (_paidFromTill) {
+      final tillText = _tillCashOutController.text.trim();
+      tillCashOutCents = tillText.isEmpty
+          ? null
+          : NumericInputField.parseValue(tillText, NumericInputMode.money);
+    }
+
     setState(() {
       _qtyError = (qty == null || qty <= 0) ? 'Enter a quantity greater than zero' : null;
       _priceError = (priceText.isNotEmpty && newPrice == null) ? 'Enter a valid amount' : null;
+      _tillCashOutError = _paidFromTill && (tillCashOutCents == null || tillCashOutCents <= 0)
+          ? 'Enter an amount greater than zero'
+          : null;
     });
-    if (_qtyError != null || _priceError != null) return;
+    if (_qtyError != null || _priceError != null || _tillCashOutError != null) return;
 
     final confirmed = await ConfirmationDialog.show(
       context,
       title: 'Confirm Stock Receipt',
       message: 'Add $qty ${product.unit.label} to "${product.name}"?'
           '${newPrice != null ? '\nNew buying price: ${centsToInputString(newPrice)} KES' : ''}'
+          '${_paidFromTill ? '\nPaid from till: ${centsToInputString(tillCashOutCents!)} KES' : ''}'
           '${_noteController.text.trim().isNotEmpty ? '\nNote: ${_noteController.text.trim()}' : ''}',
     );
     if (!confirmed) return;
@@ -95,6 +127,7 @@ class _AddStockScreenState extends ConsumerState<AddStockScreen> {
             qty: qty!,
             newBuyingPriceCents: newPrice,
             note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+            tillCashOutCents: tillCashOutCents,
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -157,6 +190,49 @@ class _AddStockScreenState extends ConsumerState<AddStockScreen> {
                 controller: _priceController,
                 errorText: _priceError,
               ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Paid from till (cash)'),
+                value: _paidFromTill,
+                onChanged: (value) {
+                  setState(() {
+                    _paidFromTill = value;
+                    if (value) {
+                      final qty = NumericInputField.parseValue(
+                        _qtyController.text,
+                        NumericInputMode.quantity,
+                      );
+                      final enteredPrice = NumericInputField.parseValue(
+                        _priceController.text,
+                        NumericInputMode.money,
+                      );
+                      final prefill = computeTillPrefillCents(
+                        qty ?? 0,
+                        enteredPrice,
+                        selected?.buyingPrice,
+                      );
+                      _tillCashOutController.text =
+                          prefill != null ? centsToInputString(prefill) : '';
+                    }
+                    _tillCashOutError = null;
+                  });
+                },
+              ),
+              if (_paidFromTill) ...[
+                const SizedBox(height: 12),
+                NumericInputField.money(
+                  label: 'Amount paid from till (KES)',
+                  controller: _tillCashOutController,
+                  errorText: _tillCashOutError,
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Reduces expected cash at close. Profit is not affected — '
+                  'stock cost counts when items sell.',
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
               const SizedBox(height: 12),
               TextField(
                 controller: _noteController,
