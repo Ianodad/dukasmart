@@ -80,4 +80,22 @@ void main() {
       expect(findExactNameMatch('Rice 2kg', const []), isNull);
     });
   });
+
+  group('centsToInputString', () {
+    test('renders whole shillings without a decimal part', () {
+      expect(centsToInputString(5500), '55');
+    });
+
+    test('renders a decimal part padded to two digits', () {
+      expect(centsToInputString(5505), '55.05');
+    });
+
+    test('renders a full two-digit remainder', () {
+      expect(centsToInputString(5550), '55.50');
+    });
+
+    test('renders zero cents as "0"', () {
+      expect(centsToInputString(0), '0');
+    });
+  });
 }

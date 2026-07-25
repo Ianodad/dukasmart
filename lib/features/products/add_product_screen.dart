@@ -15,7 +15,19 @@ import '../../core/widgets/barcode_field.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/numeric_input_field.dart';
 import '../../core/widgets/primary_button.dart';
+import 'common_products.dart';
 import 'image_storage/image_storage.dart';
+
+/// Renders integer cents as an editable KES string ("5500" -> "55",
+/// "5550" -> "55.50") without ever going through double math (design
+/// D2) — used only to prefill [NumericInputField.money]'s controllers
+/// when a common product is selected below.
+String centsToInputString(int cents) {
+  final shillings = cents ~/ 100;
+  final remainder = cents % 100;
+  if (remainder == 0) return '$shillings';
+  return '$shillings.${remainder.toString().padLeft(2, '0')}';
+}
 
 /// Pure helper (testable): profit per unit in cents, or `null` when either
 /// price is unset (requirements #4: "Show profit/unit = selling − buying").
@@ -142,6 +154,48 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final path = await pickAndStoreProductImage();
     if (path == null) return;
     setState(() => _imagePath = path);
+  }
+
+  /// Opens the "Choose common product" bottom sheet (UAT feedback: "offer
+  /// a catalog of common products with default prices so I don't have to
+  /// type descriptions"). A row for a product already in inventory routes
+  /// to Add Stock instead of prefilling.
+  void _openCommonProductSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _CommonProductSheet(
+        onSelect: _applyCommonProduct,
+      ),
+    );
+  }
+
+  /// Prefills the form from [product] (name, unit, buying/selling price,
+  /// threshold), leaving opening stock, barcode, and image untouched.
+  /// Setting `_nameController.text` fires the existing debounced name
+  /// listener, so the duplicate-name banner still appears if the prefilled
+  /// name later matches an existing product exactly.
+  void _applyCommonProduct(CommonProduct product) {
+    setState(() {
+      _nameController.text = product.name;
+      _buyingPriceController.text = centsToInputString(
+        product.buyingPriceCents,
+      );
+      _sellingPriceController.text = centsToInputString(
+        product.sellingPriceCents,
+      );
+      _thresholdController.text = '${product.threshold}';
+      _unit = product.unit;
+      _nameError = null;
+      _buyingPriceError = null;
+      _sellingPriceError = null;
+      _thresholdError = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Prefilled from common products — adjust as needed'),
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -277,6 +331,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                OutlinedButton.icon(
+                  onPressed: _openCommonProductSheet,
+                  icon: const Icon(Icons.list_alt),
+                  label: const Text('Choose common product'),
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
@@ -451,6 +511,82 @@ class _DuplicateProductBanner extends StatelessWidget {
               icon: const Icon(Icons.close),
               tooltip: 'Dismiss',
               onPressed: onDismiss,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Choose common product" bottom sheet (UAT feedback: "offer a catalog of
+/// common products with default prices so I don't have to type
+/// descriptions"). A catalog item already in inventory (exact, case-
+/// insensitive name match) shows an "In stock" trailing label and routes
+/// to Add Stock instead of prefilling.
+class _CommonProductSheet extends ConsumerWidget {
+  const _CommonProductSheet({required this.onSelect});
+
+  final ValueChanged<CommonProduct> onSelect;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final products =
+        ref.watch(productsProvider).valueOrNull ?? const <Product>[];
+
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.75,
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Choose common product',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: commonProducts.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final item = commonProducts[index];
+                  final match = findExactNameMatch(item.name, products);
+                  return ListTile(
+                    title: Text(item.name),
+                    subtitle: Row(
+                      children: [
+                        Text('${item.unit.label} · Buy '),
+                        MoneyText(item.buyingPriceCents),
+                        const Text(' · Sell '),
+                        MoneyText(item.sellingPriceCents),
+                      ],
+                    ),
+                    trailing: match != null
+                        ? Text(
+                            'In stock: ${match.quantity}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      if (match != null) {
+                        context.pushNamed('add-stock', extra: match.id);
+                      } else {
+                        onSelect(item);
+                      }
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
