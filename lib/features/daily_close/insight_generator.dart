@@ -16,7 +16,8 @@ String buildInsight(ClosedDayReport report) {
   sentences.add('Total sales for the day: ${formatCents(close.totalSales)}.');
 
   if (close.totalSales > 0) {
-    final mpesaShare = (close.mpesaSales * 100 / close.totalSales).round();
+    final mpesaShare =
+        ((close.mpesaSales * 100) + (close.totalSales ~/ 2)) ~/ close.totalSales;
     sentences.add('M-PESA accounted for $mpesaShare% of sales.');
   }
 

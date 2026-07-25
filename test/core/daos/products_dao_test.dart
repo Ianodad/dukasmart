@@ -90,6 +90,104 @@ void main() {
       final products = await db.select(db.products).get();
       expect(products.length, before.length + 2);
     });
+
+    test('rejects an empty or whitespace-only name and persists nothing', () async {
+      final beforeProducts = await db.select(db.products).get();
+      final beforeMovements = await db.select(db.stockMovements).get();
+
+      expect(
+        () => db.productsDao.createProduct(_product(name: ''), openingQty: 0),
+        throwsA(isA<DukaError>()),
+      );
+      expect(
+        () => db.productsDao.createProduct(_product(name: '   '), openingQty: 0),
+        throwsA(isA<DukaError>()),
+      );
+
+      final products = await db.select(db.products).get();
+      final movements = await db.select(db.stockMovements).get();
+      expect(products.length, beforeProducts.length);
+      expect(movements.length, beforeMovements.length);
+    });
+
+    test('rejects a negative buying price and persists nothing', () async {
+      final beforeProducts = await db.select(db.products).get();
+      final beforeMovements = await db.select(db.stockMovements).get();
+
+      expect(
+        () => db.productsDao.createProduct(
+          _product(name: 'Bad Price', buyingPrice: -1),
+          openingQty: 0,
+        ),
+        throwsA(isA<DukaError>()),
+      );
+
+      final products = await db.select(db.products).get();
+      final movements = await db.select(db.stockMovements).get();
+      expect(products.length, beforeProducts.length);
+      expect(movements.length, beforeMovements.length);
+    });
+
+    test('rejects a negative selling price and persists nothing', () async {
+      final beforeProducts = await db.select(db.products).get();
+      final beforeMovements = await db.select(db.stockMovements).get();
+
+      expect(
+        () => db.productsDao.createProduct(
+          _product(name: 'Bad Price', sellingPrice: -1),
+          openingQty: 0,
+        ),
+        throwsA(isA<DukaError>()),
+      );
+
+      final products = await db.select(db.products).get();
+      final movements = await db.select(db.stockMovements).get();
+      expect(products.length, beforeProducts.length);
+      expect(movements.length, beforeMovements.length);
+    });
+
+    test('allows a null buying/selling price (only negatives are rejected)', () async {
+      final id = await db.productsDao.createProduct(
+        _product(name: 'No Price'),
+        openingQty: 0,
+      );
+      final product = await (db.select(db.products)..where((t) => t.id.equals(id))).getSingle();
+      expect(product.buyingPrice, isNull);
+      expect(product.sellingPrice, isNull);
+    });
+
+    test('rejects a negative openingQty and persists nothing', () async {
+      final beforeProducts = await db.select(db.products).get();
+      final beforeMovements = await db.select(db.stockMovements).get();
+
+      expect(
+        () => db.productsDao.createProduct(_product(name: 'Bad Qty'), openingQty: -1),
+        throwsA(isA<DukaError>()),
+      );
+
+      final products = await db.select(db.products).get();
+      final movements = await db.select(db.stockMovements).get();
+      expect(products.length, beforeProducts.length);
+      expect(movements.length, beforeMovements.length);
+    });
+
+    test('rejects a negative lowStockThreshold and persists nothing', () async {
+      final beforeProducts = await db.select(db.products).get();
+      final beforeMovements = await db.select(db.stockMovements).get();
+
+      expect(
+        () => db.productsDao.createProduct(
+          _product(name: 'Bad Threshold', lowStockThreshold: -1),
+          openingQty: 0,
+        ),
+        throwsA(isA<DukaError>()),
+      );
+
+      final products = await db.select(db.products).get();
+      final movements = await db.select(db.stockMovements).get();
+      expect(products.length, beforeProducts.length);
+      expect(movements.length, beforeMovements.length);
+    });
   });
 
   group('updateProduct', () {
