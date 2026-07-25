@@ -1,6 +1,11 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import 'daos/daily_close_dao.dart';
+import 'daos/expenses_dao.dart';
+import 'daos/products_dao.dart';
+import 'daos/sales_dao.dart';
+import 'daos/stock_dao.dart';
 import 'enums.dart';
 import 'tables.dart';
 
@@ -69,9 +74,9 @@ const List<_SeedProduct> _seedProducts = [
   ),
 ];
 
-// NOTE: `daos: [...]` is added in Task F3 once the DAO classes exist.
 @DriftDatabase(
   tables: [Products, Sales, SaleItems, Expenses, StockMovements, DailyCloses],
+  daos: [ProductsDao, StockDao, SalesDao, ExpensesDao, DailyCloseDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
