@@ -39,6 +39,13 @@ passed yet. Reviews remain DEFERRED to one consolidated pass after all phases
     Product, 15 staples with default KES prices; tap → prefills name/unit/prices/
     threshold (opening stock left to user); already-stocked items show "In stock: N"
     and route to Add Stock instead. 78 tests.
+  - `f724761` till cash-out for stock (design Amendment A1, appended to design doc):
+    new `ExpenseCategory.stockPurchase` — EXCLUDED from expensesTotal/netResult
+    (COGS covers cost at sale time), INCLUDED in cashExpenses → reduces
+    expectedCash. `receiveStock(tillCashOutCents:)` records it atomically via
+    ExpensesDao inside the same transaction; Add Stock gets "Paid from till
+    (cash)" toggle + editable prefill (`computeTillPrefillCents`); Record Expense
+    shows helper text for the category. 88 tests.
 - Handoff committed on `phase/integration` (this file).
 
 ## Remaining
@@ -79,7 +86,8 @@ passed yet. Reviews remain DEFERRED to one consolidated pass after all phases
   lib/features/<x>/ + test/features/<x>/; verifiers confirmed no raw drift usage.
 - Review-of-record happens ONCE (Remaining #2) before merge to main — do not
   re-litigate per-feature.
-- Test map: 43 foundation → 61 post-tracks → 67 (+dup/restock) → 78 (+catalog).
+- Test map: 43 foundation → 61 post-tracks → 67 (+dup/restock) → 78 (+catalog) →
+  88 (+till cash-out A1).
 - Flutter 3.38.3 at `~/flutter`; Android SDK at `~/Android/Sdk`, NO emulator image
   (Ian chose SDK-only); C toolchain via Homebrew required for tests/run.
 
@@ -87,7 +95,8 @@ passed yet. Reviews remain DEFERRED to one consolidated pass after all phases
 - Repo `~/Documents/Flutter/dukasmart`, NO remote. `phase/integration` checked
   out; clean except untracked `.claude/` (workflow worktrees).
 - `phase/integration` tip after this handoff commit; sequence: `733ee4a` handoff →
-  `0d9028b` dup/restock → `27b7d09` catalog → this commit.
+  `0d9028b` dup/restock → `27b7d09` catalog → `dd50741` handoff → `f724761`
+  till cash-out → this commit.
 - Branches: `main` (docs, `447ac0e`), `phase/foundation` (`975408e`, tag
   `foundation-frozen`), `phase/track-{products,sales,expenses,close}` (merged),
   `phase/integration` (HEAD).
