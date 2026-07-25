@@ -125,6 +125,38 @@ void main() {
       expect(expenses, isEmpty);
     });
 
+    test('rejects a negative newBuyingPriceCents and rolls back fully', () async {
+      final id = await insertProduct(quantity: 5, buyingPrice: 100);
+
+      expect(
+        () => db.stockDao.receiveStock(
+          productId: id,
+          qty: 10,
+          newBuyingPriceCents: -1,
+          note: 'bad restock',
+        ),
+        throwsA(isA<DukaError>()),
+      );
+
+      final product = await (db.select(db.products)..where((t) => t.id.equals(id))).getSingle();
+      expect(product.quantity, 5, reason: 'quantity must not change on rejection');
+      expect(product.buyingPrice, 100, reason: 'buying price must not change on rejection');
+
+      final movements =
+          await (db.select(db.stockMovements)..where((t) => t.productId.equals(id))).get();
+      expect(movements, isEmpty);
+
+      final expenses = await db.select(db.expenses).get();
+      expect(expenses, isEmpty);
+    });
+
+    test('allows newBuyingPriceCents of exactly zero', () async {
+      final id = await insertProduct(quantity: 5, buyingPrice: 100);
+      await db.stockDao.receiveStock(productId: id, qty: 5, newBuyingPriceCents: 0);
+      final product = await (db.select(db.products)..where((t) => t.id.equals(id))).getSingle();
+      expect(product.buyingPrice, 0);
+    });
+
     test('atomicity: a failing call with tillCashOutCents set persists no expense row', () async {
       await expectLater(
         db.stockDao.receiveStock(productId: 9999, qty: 10, tillCashOutCents: 5000),

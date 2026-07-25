@@ -66,6 +66,16 @@ void main() {
       expect(insight, contains('M-PESA accounted for 25% of sales.'));
     });
 
+    test('computes the M-PESA share with rounded integer arithmetic (1/3 -> 33%)', () {
+      final report = ClosedDayReport(
+        close: _close(totalSales: 3, cashSales: 2, mpesaSales: 1),
+        bestSeller: null,
+        lowStockNow: const [],
+      );
+      final insight = buildInsight(report);
+      expect(insight, contains('M-PESA accounted for 33% of sales.'));
+    });
+
     test('adds best-seller sentence only when one exists', () {
       const bestSeller = BestSeller(productId: 1, name: 'Coke', qtySold: 5, revenue: 1000);
       final withBestSeller = ClosedDayReport(

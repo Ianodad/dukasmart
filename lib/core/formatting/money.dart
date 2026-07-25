@@ -27,13 +27,17 @@ int? parseKesToCents(String input) {
 /// Formats integer cents as a KES display string.
 ///
 /// `1245000` -> `"KES 12,450"`; `1245050` -> `"KES 12,450.50"`.
+/// Negative values keep their sign: `-125` -> `"KES -1.25"`.
 String formatCents(int cents) {
-  final shillings = cents ~/ 100;
-  final remainder = cents % 100;
+  final isNegative = cents < 0;
+  final absCents = cents.abs();
+  final shillings = absCents ~/ 100;
+  final remainder = absCents % 100;
+  final sign = isNegative ? '-' : '';
   final wholePart = _shillingsFormat.format(shillings);
   if (remainder == 0) {
-    return 'KES $wholePart';
+    return 'KES $sign$wholePart';
   }
   final centsPart = remainder.toString().padLeft(2, '0');
-  return 'KES $wholePart.$centsPart';
+  return 'KES $sign$wholePart.$centsPart';
 }
