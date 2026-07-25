@@ -41,4 +41,8 @@ void main() {
       expect(m.quantity, greaterThan(0));
     }
   });
+
+  test('ready() completes against an in-memory db', () async {
+    await expectLater(db.ready(), completes);
+  });
 }

@@ -23,11 +23,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _openDatabaseThenGoHome() async {
-    final db = ref.read(databaseProvider);
-    // `customStatement` round-trips through the executor, forcing it to
-    // actually open (and, on first run, complete onCreate seeding) before
-    // we navigate — waits for DB open per design F5.
-    await db.customStatement('SELECT 1');
+    // Waits for the database to open (and, on first run, finish onCreate
+    // seeding) via the core readiness API before we navigate — design F5.
+    await ref.read(databaseReadyProvider.future);
     if (!mounted) return;
     context.go('/home');
   }
