@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/theme.dart';
 import '../../core/database/database.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/primary_button.dart';
+import '../../core/widgets/stock_status_chip.dart';
 
 /// Feature-local: products at or below their low-stock threshold (design
 /// D5), sourced from the frozen `ProductsDao.watchProducts(lowStockOnly:
@@ -37,38 +39,108 @@ class LowStockScreen extends ConsumerWidget {
         data: (products) {
           if (products.isEmpty) {
             return const EmptyState(
-              title: 'No low-stock products. Well stocked!',
+              title: 'All stocked up',
+              message: 'No products are low on stock right now.',
               icon: Icons.check_circle_outline,
             );
           }
           return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             itemCount: products.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final p = products[index];
-              return ListTile(
+              return _LowStockRow(
+                product: p,
                 onTap: () => _openProductSheet(context, p),
-                title: Text(p.name),
-                subtitle: Text('Qty: ${p.quantity}  •  Threshold: ${p.lowStockThreshold}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    p.sellingPrice != null
-                        ? MoneyText(p.sellingPrice!)
-                        : const Text('No price', style: TextStyle(fontStyle: FontStyle.italic)),
-                    IconButton(
-                      icon: const Icon(Icons.add_box_outlined),
-                      tooltip: 'Add Stock',
-                      onPressed: () => context.pushNamed('add-stock', extra: p.id),
-                    ),
-                  ],
-                ),
+                onAddStock: () => context.pushNamed('add-stock', extra: p.id),
               );
             },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => Center(child: Text('Error: $error')),
+      ),
+    );
+  }
+}
+
+/// A single Low Stock row: bordered card in the [ProductListTile] visual
+/// language, plus the quantity/threshold that put it here in amber
+/// emphasis, the [StockStatusChip] (already amber/red pair styled), and a
+/// quick-restock icon (inkMuted -> emerald on press, matching the Product
+/// List row pattern).
+class _LowStockRow extends StatelessWidget {
+  const _LowStockRow({required this.product, required this.onTap, required this.onAddStock});
+
+  final Product product;
+  final VoidCallback onTap;
+  final VoidCallback onAddStock;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTokens.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTokens.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(product.name, style: AppTextStyles.bodyStrong),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Qty ${product.quantity} · Threshold ${product.lowStockThreshold}',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppTokens.amber,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    StockStatusChip(quantity: product.quantity, threshold: product.lowStockThreshold),
+                    const SizedBox(height: 4),
+                    product.sellingPrice != null
+                        ? MoneyText(product.sellingPrice!)
+                        : Text(
+                            'No price',
+                            style: AppTextStyles.caption.copyWith(fontStyle: FontStyle.italic),
+                          ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_box_outlined),
+                  tooltip: 'Add Stock',
+                  style: ButtonStyle(
+                    foregroundColor: WidgetStateProperty.resolveWith(
+                      (states) =>
+                          states.contains(WidgetState.pressed) ? AppTokens.emerald : AppTokens.inkMuted,
+                    ),
+                  ),
+                  onPressed: onAddStock,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -90,7 +162,7 @@ class _ProductDetailsSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(product.name, style: Theme.of(context).textTheme.titleLarge),
+            Text(product.name, style: AppTextStyles.title),
             const SizedBox(height: 12),
             Text('Barcode: ${product.barcode ?? '—'}'),
             Text('Unit: ${product.unit.label}'),
@@ -102,7 +174,7 @@ class _ProductDetailsSheet extends StatelessWidget {
                 const Text('Buying price: '),
                 product.buyingPrice != null
                     ? MoneyText(product.buyingPrice!)
-                    : const Text('Not set'),
+                    : Text('Not set', style: AppTextStyles.body.copyWith(fontStyle: FontStyle.italic)),
               ],
             ),
             Row(
@@ -110,7 +182,7 @@ class _ProductDetailsSheet extends StatelessWidget {
                 const Text('Selling price: '),
                 product.sellingPrice != null
                     ? MoneyText(product.sellingPrice!)
-                    : const Text('Not set'),
+                    : Text('Not set', style: AppTextStyles.body.copyWith(fontStyle: FontStyle.italic)),
               ],
             ),
             const SizedBox(height: 20),
