@@ -118,7 +118,7 @@ class DukaToolDispatcher {
           return jsonEncode(
               await _queries.salesSummary(_date(input, 'from'), _date(input, 'to')));
         case 'get_top_products':
-          final limit = ((input['limit'] as num?)?.toInt() ?? 5).clamp(1, 20);
+          final limit = (_intOrNull(input, 'limit') ?? 5).clamp(1, 20);
           return jsonEncode(await _queries.topProducts(
               _date(input, 'from'), _date(input, 'to'),
               limit: limit));
@@ -149,6 +149,21 @@ class DukaToolDispatcher {
     } on FormatException catch (e) {
       return jsonEncode({'error': e.message});
     }
+  }
+
+  /// Reads an optional integer input. Model tool calls sometimes emit
+  /// numbers as JSON strings despite an integer schema — accept those too.
+  /// Never throws a raw TypeError; bad shapes become FormatException so
+  /// they're caught by [execute]'s error handling, same as [_date].
+  static int? _intOrNull(Map<String, Object?> input, String key) {
+    final raw = input[key];
+    if (raw == null) return null;
+    if (raw is num) return raw.toInt();
+    if (raw is String) {
+      final parsed = int.tryParse(raw);
+      if (parsed != null) return parsed;
+    }
+    throw FormatException('Invalid "$key" (expected integer, got "$raw").');
   }
 
   static DateTime _date(Map<String, Object?> input, String key) {
