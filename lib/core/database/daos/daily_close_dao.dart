@@ -96,4 +96,14 @@ class DailyCloseDao extends DatabaseAccessor<AppDatabase> with _$DailyCloseDaoMi
     final normalizedDate = localMidnight(date);
     return (select(dailyCloses)..where((t) => t.date.equals(normalizedDate))).getSingleOrNull();
   }
+
+  /// The most recently closed day (by [DailyCloses.date]), or `null` if no
+  /// day has ever been closed. Backs the dashboard's "Daily Report" quick
+  /// action, which jumps straight to the latest report.
+  Future<DailyClose?> latestClose() {
+    return (select(dailyCloses)
+          ..orderBy([(t) => OrderingTerm.desc(t.date)])
+          ..limit(1))
+        .getSingleOrNull();
+  }
 }
