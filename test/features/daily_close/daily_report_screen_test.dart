@@ -1,4 +1,5 @@
 import 'package:dukasmart/app/theme.dart';
+import 'package:dukasmart/core/ai/ai_providers.dart';
 import 'package:dukasmart/core/database/database.dart';
 import 'package:dukasmart/core/database/enums.dart';
 import 'package:dukasmart/core/models/best_seller.dart';
@@ -123,5 +124,39 @@ void main() {
       find.ancestor(of: find.text('KES 0'), matching: find.byType(MoneyText)),
     );
     expect(diffMoneyText.style?.color, AppTokens.emerald);
+  });
+
+  testWidgets('AI insight card renders when AI is available', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          closedDayReportProvider.overrideWith((ref, date) async => _fixtureReport),
+          aiAvailableProvider.overrideWithValue(true),
+          aiInsightProvider.overrideWith((ref, date) async => 'Steady sales today.'),
+        ],
+        child: MaterialApp(home: DailyReportScreen(date: _fixedDate)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Steady sales today.'), 200);
+    expect(find.text('Steady sales today.'), findsOneWidget);
+  });
+
+  testWidgets('no AI card when AI is not configured', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          closedDayReportProvider.overrideWith((ref, date) async => _fixtureReport),
+          // A10.1: override explicitly rather than relying on the test
+          // environment merely lacking --dart-define.
+          aiAvailableProvider.overrideWithValue(false),
+        ],
+        child: MaterialApp(home: DailyReportScreen(date: _fixedDate)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.auto_awesome_outlined), findsNothing);
   });
 }
