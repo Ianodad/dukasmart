@@ -117,6 +117,26 @@ void main() {
     expect(json['error'], isA<String>());
   });
 
+  test('R4: get_expenses returns aggregates grouped by both category and '
+      'reason, never raw expense rows', () async {
+    await db.expensesDao.recordExpense(
+      amountCents: 500,
+      category: ExpenseCategory.airtime,
+      description: 'Top-up for M-PESA float',
+      method: PaymentMethod.cash,
+      selectedDate: DateTime.now(),
+    );
+    final out = await dispatcher
+        .execute('get_expenses', {'from': today(), 'to': today()});
+    final json = jsonDecode(out) as Map<String, dynamic>;
+    expect(json['by_category'], isA<List>());
+    expect(json['by_reason'], isA<List>());
+    final reasons = (json['by_reason'] as List).cast<Map>();
+    expect(reasons.single['reason'], 'Top-up for M-PESA float');
+    expect(reasons.single['total_cents'], 500);
+    expect(json.containsKey('description'), isFalse);
+  });
+
   test('unknown tool -> error JSON', () async {
     final out = await dispatcher.execute('get_weather', {});
     final json = jsonDecode(out) as Map<String, dynamic>;

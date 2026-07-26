@@ -106,12 +106,25 @@ class AiQueryService {
 
     final total = rows.fold<int>(0, (sum, e) => sum + e.amount);
     final byCategory = <ExpenseCategory, ({int total, int count})>{};
+    // R4: also group by the expense's free-text "reason" (the `description`
+    // column) — the schema has no dedicated reason enum, so `description`
+    // is the closest thing to it. Rows with no/blank description are
+    // bucketed under "Unspecified" rather than dropped.
+    final byReason = <String, ({int total, int count})>{};
     for (final e in rows) {
-      final prev = byCategory[e.category] ?? (total: 0, count: 0);
+      final prevCategory = byCategory[e.category] ?? (total: 0, count: 0);
       byCategory[e.category] =
-          (total: prev.total + e.amount, count: prev.count + 1);
+          (total: prevCategory.total + e.amount, count: prevCategory.count + 1);
+
+      final trimmed = e.description?.trim();
+      final reasonKey = (trimmed == null || trimmed.isEmpty) ? 'Unspecified' : trimmed;
+      final prevReason = byReason[reasonKey] ?? (total: 0, count: 0);
+      byReason[reasonKey] =
+          (total: prevReason.total + e.amount, count: prevReason.count + 1);
     }
-    final ranked = byCategory.entries.toList()
+    final rankedCategory = byCategory.entries.toList()
+      ..sort((a, b) => b.value.total.compareTo(a.value.total));
+    final rankedReason = byReason.entries.toList()
       ..sort((a, b) => b.value.total.compareTo(a.value.total));
 
     return {
@@ -119,10 +132,21 @@ class AiQueryService {
       'to': _dateString(to),
       'total_expenses_cents': total,
       'total_expenses_display': formatCents(total),
+      // R4: aggregated totals + counts only, grouped BOTH ways — never raw
+      // expense rows.
       'by_category': [
-        for (final e in ranked)
+        for (final e in rankedCategory)
           {
             'category': e.key.label,
+            'total_cents': e.value.total,
+            'total_display': formatCents(e.value.total),
+            'count': e.value.count,
+          },
+      ],
+      'by_reason': [
+        for (final e in rankedReason)
+          {
+            'reason': e.key,
             'total_cents': e.value.total,
             'total_display': formatCents(e.value.total),
             'count': e.value.count,
@@ -149,6 +173,12 @@ class AiQueryService {
     return {'product_count': rows.length, 'products': rows};
   }
 
+  /// R6: serializes the STORED [DailyClose] row in full — this is the
+  /// authoritative record for report narration (cash sales, M-PESA sales,
+  /// expenses total, COGS, gross profit, net result, expected/actual cash,
+  /// and the cash difference), never recomputed from live sales/expenses.
+  /// Recording a sale or expense after a day is closed does not change
+  /// these figures unless the day is explicitly re-closed.
   Future<Map<String, Object?>> dailyCloses(DateTime from, DateTime to) async {
     final start = localMidnight(from);
     final end = localMidnight(to);
@@ -166,10 +196,22 @@ class AiQueryService {
             'date': _dateString(c.date),
             'total_sales_cents': c.totalSales,
             'total_sales_display': formatCents(c.totalSales),
+            'cash_sales_cents': c.cashSales,
+            'cash_sales_display': formatCents(c.cashSales),
+            'mpesa_sales_cents': c.mpesaSales,
+            'mpesa_sales_display': formatCents(c.mpesaSales),
             'expenses_cents': c.expenses,
             'expenses_display': formatCents(c.expenses),
+            'cost_of_goods_cents': c.costOfGoods,
+            'cost_of_goods_display': formatCents(c.costOfGoods),
+            'gross_profit_cents': c.grossProfit,
+            'gross_profit_display': formatCents(c.grossProfit),
             'net_result_cents': c.netResult,
             'net_result_display': formatCents(c.netResult),
+            'expected_cash_cents': c.expectedCash,
+            'expected_cash_display': formatCents(c.expectedCash),
+            'actual_cash_cents': c.actualCash,
+            'actual_cash_display': formatCents(c.actualCash),
             'cash_difference_cents': c.cashDifference,
             'cash_difference_display': formatCents(c.cashDifference),
           },
@@ -178,9 +220,14 @@ class AiQueryService {
   }
 
   /// Per-product velocity inputs for [projectStockRunOut]. The effective
-  /// window is `min(windowDays, days since that product's first sale in
-  /// the window)`, so a product first sold 3 days ago is averaged over 3
-  /// days, not 14 (spec: "only days since first sale of that product").
+  /// averaging window starts at `max(windowStart, that product's
+  /// first-EVER sale day)` (R2) — the first-ever sale is looked up across
+  /// *all* history, not just inside the window, so an established product
+  /// that simply didn't sell early in the window is still averaged over
+  /// the full [windowDays] instead of being mistaken for brand new (which
+  /// would inflate its velocity and shorten its projected run-out). Only a
+  /// product whose first-ever sale falls inside the window gets a
+  /// shortened, "days since first sale" window.
   Future<List<ProductVelocity>> productVelocities({
     DateTime? asOf,
     int windowDays = 14,
@@ -203,16 +250,12 @@ class AiQueryService {
             .get();
 
     final soldByProduct = <int, int>{};
-    final firstSaleByProduct = <int, DateTime>{};
     for (final item in items) {
       soldByProduct[item.productId] =
           (soldByProduct[item.productId] ?? 0) + item.quantity;
-      final saleAt = saleById[item.saleId]!.createdAt;
-      final existing = firstSaleByProduct[item.productId];
-      if (existing == null || saleAt.isBefore(existing)) {
-        firstSaleByProduct[item.productId] = saleAt;
-      }
     }
+
+    final firstEverSaleByProduct = await _firstSaleDateByProduct();
 
     final products = await _db.select(_db.products).get();
     return [
@@ -220,11 +263,16 @@ class AiQueryService {
         () {
           final sold = soldByProduct[p.id] ?? 0;
           var effectiveDays = windowDays;
-          if (sold > 0) {
-            final firstDay = localMidnight(firstSaleByProduct[p.id]!);
-            final daysSinceFirst =
-                localMidnight(now).difference(firstDay).inDays + 1;
-            effectiveDays = daysSinceFirst.clamp(1, windowDays);
+          final firstEver = firstEverSaleByProduct[p.id];
+          if (firstEver != null) {
+            final firstEverDay = localMidnight(firstEver);
+            final effectiveWindowStart =
+                firstEverDay.isAfter(windowStart) ? firstEverDay : windowStart;
+            effectiveDays = (localMidnight(now)
+                        .difference(effectiveWindowStart)
+                        .inDays +
+                    1)
+                .clamp(1, windowDays);
           }
           return ProductVelocity(
             productId: p.id,
@@ -236,6 +284,29 @@ class AiQueryService {
           );
         }(),
     ];
+  }
+
+  /// Earliest sale timestamp per product, across the shop's *entire*
+  /// history (unbounded) — used by [productVelocities] (R2) to tell an
+  /// established product apart from a genuinely new one, independent of
+  /// which sales happen to fall inside the averaging window.
+  Future<Map<int, DateTime>> _firstSaleDateByProduct() async {
+    final allSales = await _db.select(_db.sales).get();
+    if (allSales.isEmpty) return {};
+    final saleById = {for (final s in allSales) s.id: s};
+    final allItems = await (_db.select(_db.saleItems)
+          ..where((t) => t.saleId.isIn(saleById.keys.toList())))
+        .get();
+
+    final firstSale = <int, DateTime>{};
+    for (final item in allItems) {
+      final saleAt = saleById[item.saleId]!.createdAt;
+      final existing = firstSale[item.productId];
+      if (existing == null || saleAt.isBefore(existing)) {
+        firstSale[item.productId] = saleAt;
+      }
+    }
+    return firstSale;
   }
 
   /// Money in from sales minus money out on expenses (all categories) —

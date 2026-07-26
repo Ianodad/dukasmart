@@ -52,9 +52,12 @@ class DukaToolDispatcher {
       'name': 'get_expenses',
       'description':
           'Call this for questions about spending or expenses over a date '
-              'range. Returns the total plus a per-category breakdown '
-              '(categories: Stock transport, Stock purchase, Electricity, '
-              'Airtime, Food, Rent, Repairs, Personal withdrawal, Other).',
+              'range. Returns the total plus two breakdowns: by category '
+              '(Stock transport, Stock purchase, Electricity, Airtime, Food, '
+              'Rent, Repairs, Personal withdrawal, Other) and by reason (the '
+              'free-text note recorded with each expense, or "Unspecified" '
+              'when none was given). Always aggregated totals and counts — '
+              'never individual expense rows.',
       'input_schema': {
         'type': 'object',
         'properties': {

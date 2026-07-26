@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../database/day_bounds.dart';
+import '../formatting/money.dart';
 import 'ai_query_service.dart';
 import 'projection_service.dart';
 
@@ -35,7 +36,21 @@ class SnapshotBuilder {
     final expensesToday = await _queries.expensesSummary(day, day);
     final expenses7 = await _queries.expensesSummary(
         day.subtract(const Duration(days: 6)), day);
+    // R5: a 30-day expense aggregate by category, alongside the existing
+    // 7-day one.
+    final expenses30 = await _queries.expensesSummary(
+        day.subtract(const Duration(days: 29)), day);
     final closeToday = await _queries.dailyCloses(day, day);
+
+    // R5: locally computed daily-sales averages so the model never has to
+    // do money arithmetic itself — plain integer division, trailing N
+    // calendar days inclusive of [day].
+    final sales7ForAvg = await _queries.salesSummary(
+        day.subtract(const Duration(days: 6)), day);
+    final salesAvg7Cents = (sales7ForAvg['total_sales_cents'] as int) ~/ 7;
+    final sales30ForAvg = await _queries.salesSummary(
+        day.subtract(const Duration(days: 29)), day);
+    final salesAvg30Cents = (sales30ForAvg['total_sales_cents'] as int) ~/ 30;
 
     final velocities = await _queries.productVelocities(asOf: day);
     final stockProjections = projectStockRunOut(velocities);
@@ -66,6 +81,11 @@ class SnapshotBuilder {
       'same_weekday_last_week': sameWeekdayLastWeek,
       'expenses_today': expensesToday,
       'expenses_last_7_days': expenses7,
+      'expenses_last_30_days': expenses30,
+      'sales_avg_7d_cents': salesAvg7Cents,
+      'sales_avg_7d_display': formatCents(salesAvg7Cents),
+      'sales_avg_30d_cents': salesAvg30Cents,
+      'sales_avg_30d_display': formatCents(salesAvg30Cents),
       'close_today': closeToday,
       'stock_projections': [
         for (final p in stockProjections.take(_maxStockProjections)) p.toJson(),

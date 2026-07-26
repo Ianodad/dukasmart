@@ -1,6 +1,7 @@
 import 'package:dukasmart/core/ai/ai_query_service.dart';
 import 'package:dukasmart/core/database/database.dart';
 import 'package:dukasmart/core/database/enums.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,6 +30,37 @@ void main() {
       method: method,
       amountReceivedCents: total,
     );
+  }
+
+  /// Inserts a sale directly (bypassing [SalesDao.completeSale], which
+  /// always stamps `DateTime.now()`) so tests can backdate a sale to
+  /// exercise R2's "first-EVER sale, unbounded" lookup.
+  Future<void> sellOnDate(int productId, int qty, DateTime date) async {
+    final product = await (db.select(db.products)
+          ..where((t) => t.id.equals(productId)))
+        .getSingle();
+    final total = product.sellingPrice! * qty;
+    final saleId = await db.into(db.sales).insert(
+          SalesCompanion.insert(
+            subtotal: total,
+            total: total,
+            paymentMethod: PaymentMethod.cash,
+            amountReceived: total,
+            changeAmount: 0,
+            createdAt: date,
+          ),
+        );
+    await db.into(db.saleItems).insert(
+          SaleItemsCompanion.insert(
+            saleId: saleId,
+            productId: productId,
+            productName: product.name,
+            quantity: qty,
+            buyingPriceSnapshot: product.buyingPrice ?? 0,
+            sellingPriceSnapshot: product.sellingPrice!,
+            total: total,
+          ),
+        );
   }
 
   group('salesSummary', () {
@@ -67,6 +99,32 @@ void main() {
     expect(first['revenue_cents'], 14000);
   });
 
+  test(
+      'R3: topProducts aggregates by productId, so two distinct products '
+      'sharing one name stay separate rows', () async {
+    final duplicateId = await db.productsDao.createProduct(
+      ProductsCompanion.insert(
+        name: 'Coca-Cola 500ml', // same display name as seeded product 1
+        unit: ProductUnit.bottle,
+        sellingPrice: const Value(7000),
+        buyingPrice: const Value(5500),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      openingQty: 10,
+    );
+    await sellToday(1, 1, PaymentMethod.cash); // seeded Coca-Cola (id 1)
+    await sellToday(duplicateId, 1, PaymentMethod.cash); // distinct product
+    final now = DateTime.now();
+
+    final json = await service.topProducts(now, now, limit: 10);
+    final products = (json['products'] as List).cast<Map>();
+    final cokeRows =
+        products.where((p) => p['name'] == 'Coca-Cola 500ml').toList();
+    expect(cokeRows, hasLength(2));
+    expect(cokeRows.every((p) => p['quantity_sold'] == 1), isTrue);
+  });
+
   test('expensesSummary groups by category label', () async {
     await db.expensesDao.recordExpense(
       amountCents: 20000,
@@ -89,6 +147,44 @@ void main() {
     final transport =
         byCategory.cast<Map>().singleWhere((c) => c['category'] == 'Stock transport');
     expect(transport['total_cents'], 20000);
+  });
+
+  test('R4: expensesSummary groups by reason (description) as well, and '
+      'never leaks raw expense rows', () async {
+    await db.expensesDao.recordExpense(
+      amountCents: 20000,
+      category: ExpenseCategory.stockTransport,
+      description: 'Boda fare to town',
+      method: PaymentMethod.cash,
+      selectedDate: DateTime.now(),
+    );
+    await db.expensesDao.recordExpense(
+      amountCents: 5000,
+      category: ExpenseCategory.stockTransport,
+      description: 'Boda fare to town',
+      method: PaymentMethod.mpesa,
+      selectedDate: DateTime.now(),
+    );
+    await db.expensesDao.recordExpense(
+      amountCents: 1000,
+      category: ExpenseCategory.other,
+      method: PaymentMethod.cash,
+      selectedDate: DateTime.now(),
+    ); // no description -> "Unspecified"
+    final now = DateTime.now();
+
+    final json = await service.expensesSummary(now, now);
+    expect(json.containsKey('by_reason'), isTrue);
+    expect(json.containsKey('description'), isFalse); // no raw rows
+    final byReason = (json['by_reason'] as List).cast<Map>();
+    expect(byReason, hasLength(2));
+    final boda =
+        byReason.singleWhere((r) => r['reason'] == 'Boda fare to town');
+    expect(boda['total_cents'], 25000);
+    expect(boda['count'], 2);
+    final unspecified = byReason.singleWhere((r) => r['reason'] == 'Unspecified');
+    expect(unspecified['total_cents'], 1000);
+    expect(unspecified['count'], 1);
   });
 
   group('stockLevels', () {
@@ -122,6 +218,32 @@ void main() {
     expect(closes.single['cash_difference_cents'], 0);
   });
 
+  test(
+      'R6: dailyCloses serializes the full stored close row (cash/mpesa '
+      'split, COGS, gross profit, expected/actual cash)', () async {
+    // Coca-Cola: buying 5500c, selling 7000c -> COGS 5500, gross profit 1500.
+    await sellToday(1, 1, PaymentMethod.cash);
+    await db.expensesDao.recordExpense(
+      amountCents: 500,
+      category: ExpenseCategory.airtime,
+      method: PaymentMethod.cash,
+      selectedDate: DateTime.now(),
+    );
+    await db.dailyCloseDao.closeDay(date: DateTime.now(), actualCashCents: 6500);
+    final now = DateTime.now();
+
+    final json = await service.dailyCloses(now, now);
+    final close = (json['closes'] as List).cast<Map>().single;
+    expect(close['cash_sales_cents'], 7000);
+    expect(close['mpesa_sales_cents'], 0);
+    expect(close['cost_of_goods_cents'], 5500);
+    expect(close['gross_profit_cents'], 1500);
+    expect(close['net_result_cents'], 1000); // 1500 gross profit - 500 expenses
+    expect(close['expected_cash_cents'], 6500); // 7000 cash sales - 500 cash expenses
+    expect(close['actual_cash_cents'], 6500);
+    expect(close['cash_difference_cents'], 0);
+  });
+
   test('productVelocities: first sale today -> 1-day effective window', () async {
     await sellToday(1, 2, PaymentMethod.cash);
     final velocities = await service.productVelocities();
@@ -131,6 +253,22 @@ void main() {
     expect(coke.currentQty, 22);
     final bread = velocities.singleWhere((v) => v.name == 'Bread 400g');
     expect(bread.soldInWindow, 0);
+  });
+
+  test(
+      'R2: an established product whose only recent sale is today keeps a '
+      'full-window average, not a 1-day one', () async {
+    // Coca-Cola's first-ever sale was 100 days ago (well outside the
+    // default 14-day window) -- it must not be treated as a brand-new
+    // product just because that's its only sale visible inside the
+    // window.
+    await sellOnDate(1, 1, DateTime.now().subtract(const Duration(days: 100)));
+    await sellToday(1, 2, PaymentMethod.cash);
+
+    final velocities = await service.productVelocities();
+    final coke = velocities.singleWhere((v) => v.name == 'Coca-Cola 500ml');
+    expect(coke.soldInWindow, 2); // the 100-day-old sale is outside the window
+    expect(coke.windowDays, 14); // full window -- established product
   });
 
   test('netCentsBetween = sales minus expenses', () async {
