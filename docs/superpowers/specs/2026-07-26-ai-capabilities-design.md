@@ -23,7 +23,7 @@ configured, the app behaves exactly as today.
 |---|---|---|
 | Scope | (1) "Ask your duka" natural-language Q&A, (2) AI daily-close insights, (3) projections with AI narration | Coherent trio sharing one AI layer. Quick-capture and voice deferred. |
 | Deployment reality | Demo / portfolio first | Dev API key via `--dart-define`; no backend, no Firebase. APK is not publicly distributed with a key. |
-| UX surface | Ask bar on dashboard → focused `/ask` Q&A screen; insight cards on existing screens | Discoverable without competing with money numbers; fits "serious merchant tool" brand. |
+| UX surface | Ask bar on dashboard → focused `/home/ask` Q&A screen; insight cards on existing screens | Discoverable without competing with money numbers; fits "serious merchant tool" brand. |
 | Data access | **Hybrid**: tool-use loop for Q&A; one-shot snapshot prompt for daily-close insights & projection narration | Tool-use gives precision + follow-ups; snapshot gives one cheap round-trip for a fixed query set. NL→SQL rejected (untrustworthy). |
 | Provider/model | Anthropic Messages API over raw HTTPS, `claude-opus-5` (single const) | No official Dart SDK; raw HTTP is documented and simple. Opus 5 is the recommended default; Haiku 4.5 is the cost fallback if ever needed. |
 
@@ -79,7 +79,7 @@ own arithmetic on money.
 |---|---|---|
 | `get_sales_summary` | `from`, `to` (ISO dates) | SalesDao aggregate: total, cash vs M-PESA, sale count |
 | `get_top_products` | `from`, `to`, `limit` | SaleItems join Products: qty + revenue per product |
-| `get_expenses` | `from`, `to` | ExpensesDao: items + total, grouped by category/reason |
+| `get_expenses` | `from`, `to` | Aggregated totals + counts by category and by reason — no raw expense rows |
 | `get_stock_levels` | `low_only` (bool) | ProductsDao/StockDao: current qty, low-stock flags |
 | `get_daily_closes` | `from`, `to` | DailyCloseDao: totals, cash difference per closed day |
 | `get_projections` | — | ProjectionService output (see below) |
@@ -91,9 +91,11 @@ not modified, and there are no schema changes.
 Tool-use loop: manual loop per Anthropic docs — send request; while
 `stop_reason == "tool_use"`, execute each `tool_use` block locally, append the
 full assistant `content` plus one user message containing all `tool_result`
-blocks (matching `tool_use_id`s); re-send. Cap: 5 iterations. `max_tokens`:
-1024. `stop_reason == "refusal"` and unknown stop reasons are handled before
-reading content.
+blocks (matching `tool_use_id`s); re-send. Cap: 5 executed tool rounds.
+`max_tokens`: 2048 for Q&A, 1024 for the one-shot insight (headroom so a
+`max_tokens` stop is an explicit failure, never silently-truncated text).
+`stop_reason == "refusal"`, `max_tokens`, and unknown stop reasons are handled
+before reading content — only `end_turn` returns text.
 
 ### ShopSnapshot (one-shot insight input)
 
@@ -120,8 +122,8 @@ short insight paragraph.
 
 ### Ask your duka
 - Dashboard gets a quiet "Ask about your duka…" field (slate, not emerald —
-  not a money action). Tapping opens `/ask` (new GoRouter route).
-- `/ask` screen: message thread, input bar, send button; 3 suggested chips on
+  not a money action). Tapping opens `/home/ask` (new GoRouter route).
+- `/home/ask` screen: message thread, input bar, send button; 3 suggested chips on
   empty state ("What did I sell today?", "Nimetumia pesa ngapi kwa transport
   wiki hii?", "What's running low?"). Loading indicator between send and reply.
 - Thread is session-only (in-memory); cleared on leaving the screen. No chat
@@ -142,7 +144,7 @@ short insight paragraph.
 
 ## Error handling
 
-- Network errors (`SocketException`, timeout ~15s) → in chat: friendly bubble
+- Network errors (`http.ClientException`, timeout ~15s) → in chat: friendly bubble
   "You're offline — asking needs internet." On the insight card: card hidden.
 - API errors: 429/5xx → "AI is busy, try again shortly"; 4xx → generic failure
   message (and debug log). No retries in v1 beyond the user tapping again.
@@ -151,8 +153,10 @@ short insight paragraph.
 
 ## Privacy & cost
 
-- Only aggregated query results and the snapshot leave the phone; no raw row
-  dumps, and the schema holds no customer PII.
+- What leaves the phone: the user's typed questions, the in-session
+  conversation thread, aggregated query results, and the snapshot. Raw
+  database rows never leave the device, and the schema holds no customer PII.
+  Demo keys should be scoped/expiring and revoked after the demo.
 - Cost estimate at Opus 5 rates ($5/$25 per MTok): ~2–4k input + ~300 output
   tokens per question ≈ ~US$0.02; one insight call per day-close. Demo-scale
   negligible. Model is a single const if a cheaper model is preferred later.

@@ -2904,3 +2904,140 @@ git commit -m "docs: document optional AI build flag"
 | Testing strategy (unit + MockClient + widget) | every task |
 | Dependency changes (`http` only) | 1 |
 | Out of scope items | none implemented — correct |
+
+---
+
+## Appendix: Codex review amendments (2026-07-26, binding)
+
+> Independent doc review (Codex gpt-5.6-sol, xhigh reasoning, VERDICT: REVISE)
+> of this plan + the design spec. These amendments are BINDING and override the
+> inline task code above wherever they conflict. R-items retrofit code already
+> committed in Tasks 1–5; A-items amend Tasks 6–12 before execution. The spec
+> doc has been amended in the same commit (route `/home/ask`, get_expenses
+> aggregates, max_tokens 2048/1024, privacy wording, ClientException).
+
+### Retrofit (already-committed code, applied before Task 6 starts)
+
+- **R1 (CRITICAL).** `android/app/src/main/AndroidManifest.xml` (the MAIN
+  manifest) lacks the INTERNET permission — only debug/profile manifests have
+  it, so a release APK could never reach the API while Chrome/`flutter run`
+  testing passes. Add `<uses-permission android:name="android.permission.INTERNET"/>`
+  above `<application>`.
+- **R2.** `AiQueryService` velocity/run-out: the per-product averaging window
+  must start at `max(windowStart, product's first-EVER sale day)` — query the
+  earliest sale across all history, not just inside the 14-day window. An
+  established product that merely didn't sell early in the window must NOT be
+  treated as new (that inflates velocity and shortens run-out). Test: an old
+  product whose only recent sale is today keeps a full-window average.
+- **R3.** `topProducts` must aggregate by `productId`, not by product name
+  (names are neither unique nor immutable); resolve the display name after
+  aggregation. Test: two distinct products sharing one name stay separate rows.
+- **R4.** `getExpenses` returns aggregated totals + counts grouped BOTH
+  `by_category` and `by_reason` (use the expense reason/note column if the
+  schema has one; if it does not, keep by_category only and record the
+  deviation). No raw expense rows in tool results. Update the Task 5 tool
+  description/schema to match.
+- **R5.** `ShopSnapshot` must additionally carry locally computed
+  `sales_avg_7d_cents/_display`, `sales_avg_30d_cents/_display`, and a 30-day
+  expense aggregate by category (cents + display + count). Integer division;
+  exact-value assertions in tests. The model may not do money arithmetic, so
+  averages must arrive precomputed.
+- **R6.** The snapshot's "today's close" section must serialize the STORED
+  `DailyClose` row (cash sales, M-PESA sales, expenses total, COGS, profit,
+  expected cash, actual cash, difference — cents + display) and be
+  authoritative for report narration; live Sales/Expenses queries only fill
+  non-close context. Regression test: recording a sale/expense AFTER the close
+  does not change the close section.
+- **R7.** `DukaToolDispatcher` must actually guarantee "bad model input never
+  throws": reject non-int `limit`, non-bool `low_only`, dates that don't
+  round-trip strict `YYYY-MM-DD`, and `from > to` — each returned as an error
+  JSON result, never an exception. Malformed-input tests per tool.
+
+### Task 6 amendments (AnthropicGateway)
+
+- **A6.1 stop_reason.** Exhaustive switch. `end_turn` → return text;
+  `tool_use` → continue loop; `refusal` → friendly refusal message;
+  `max_tokens`, `stop_sequence`, and ANY unknown value → throw
+  `AiUnavailableError` (generic friendly message). Never return text for an
+  unknown stop reason. `max_tokens` request field: 2048 for `ask`, 1024 for
+  `generateInsight` (spec amended to match).
+- **A6.2 loop cap.** Execute at most 5 tool rounds. After the 5th executed
+  round, send the final follow-up request; if THAT response asks for tools
+  again, do NOT execute them — return the fallback message. (The inline plan
+  code's `round <= maxToolRounds` executes a 6th tool batch whose results are
+  never sent — off by one.)
+- **A6.3 error boundary.** Malformed responses (invalid UTF-8/JSON, non-map
+  body, missing or odd-shaped `content`/`tool_use` fields) →
+  `AiUnavailableError`, never a raw `FormatException`/`TypeError`. A tool that
+  throws during dispatch → paired `tool_result` with `is_error: true`; the
+  loop continues.
+- **A6.4 HTTP mapping.** 429 AND every 5xx → the "busy" message; other
+  non-200 → generic unavailable. Timeout is an injectable `Duration`
+  defaulting to 15s (spec value), applied per request. Debug builds only: log
+  status code + `request-id` header on 4xx — never the key, never the body.
+- **A6.5 required tests.** Additionally assert: method/endpoint/content-type
+  + anthropic headers on the wire; a response with TWO parallel `tool_use`
+  blocks yields both `tool_result`s in ONE user turn; non-ASCII UTF-8 body
+  decodes correctly; timeout → `AiUnavailableError`; malformed JSON →
+  `AiUnavailableError`; `max_tokens` stop → `AiUnavailableError`; unknown
+  stop_reason → `AiUnavailableError`.
+
+### Task 7 amendments (providers)
+
+- **A7.1 fail closed.** `aiGatewayProvider` must throw `StateError` when
+  `!AiConfig.isConfigured` — reading the gateway without a key is a programmer
+  error, not a silent empty-key client.
+- **A7.2 insight caching.** Cache a SUCCESSFUL insight per normalized close
+  date for the app session (reopening the report must not re-bill); failures
+  are NOT cached so reopening retries.
+
+### Task 8 amendments (AskController)
+
+- **A8.1 lifecycle + error boundary.** Guard use-after-dispose: set a flag via
+  `ref.onDispose`; after every `await`, return early if disposed; reset
+  `sending` in a `finally`. Catch ALL exceptions from the gateway (not just
+  `AiUnavailableError`); map unknown ones to the generic error bubble. Test
+  with a `Completer`-controlled fake + container dispose mid-flight.
+- **A8.2 fail closed.** `send()` returns immediately (no gateway read, no
+  request) when AI is unavailable.
+
+### Task 9 amendments (AskScreen)
+
+- **A9.1 deep-link safety.** The `/home/ask` route builder must render a safe
+  "AI unavailable" placeholder WITHOUT reading the gateway provider when
+  `!AiConfig.isConfigured` — a deep link must never construct a network
+  client. Test: pumping the screen with availability false performs zero HTTP
+  requests (recording fake client).
+- **A9.2 loading test.** Add a test that OBSERVES the loading state (pending
+  `Completer` → progress indicator visible, send disabled).
+
+### Task 10/11 amendments (widget gating tests)
+
+- **A10.1.** Availability widget tests must override the availability
+  provider explicitly for BOTH true and false cases — never rely on the test
+  environment merely lacking `--dart-define`.
+
+### Task 12 amendments (verification + README)
+
+- **A12.1 smoke test.** Record 1–2 sales/expenses BEFORE asking "What did I
+  sell today?" (first-run seed creates products + opening stock, no sales).
+  Run the offline/airplane check as its own pass. R1's INTERNET permission is
+  not exercised by the Chrome target — verify on an Android profile/release
+  build if a device is available, else record it as a known gap in the README.
+- **A12.2 README privacy wording.** State plainly: user questions, the
+  conversation thread, aggregated results, and the snapshot are sent to
+  Anthropic; raw database rows never leave the device. Recommend a scoped /
+  expiring demo key, revoked after the demo.
+
+### Decision log (orchestrator)
+
+- Codex #15 (route `/ask` vs `/home/ask`): resolved by amending the SPEC to
+  `/home/ask` — the nested route was Ian's approved decision (handoff decision
+  3); the router edit remains the recorded Foundation-ownership exception.
+- Codex #2 (thinking/token budgets): adopted the exhaustive stop-reason switch
+  and raised budgets (2048/1024) with hard-fail on truncation; did NOT add a
+  `thinking` request parameter — its shape is unverified against this API
+  version and a malformed request (400) is a worse failure mode than a larger
+  budget in v1.
+- All other findings accepted as written; Codex #17/#18 are folded into
+  A12.1/A7.2.
