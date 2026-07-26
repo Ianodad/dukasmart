@@ -39,9 +39,20 @@ class SnapshotBuilder {
 
     final velocities = await _queries.productVelocities(asOf: day);
     final stockProjections = projectStockRunOut(velocities);
-    final net30 = await _queries.netCentsBetween(
-        day.subtract(const Duration(days: 29)), day);
-    final cashFlow = projectCashFlow(netCentsInWindow: net30, daysOfData: 30);
+    final cashFlowWindowStart = day.subtract(const Duration(days: 29));
+    final net30 =
+        await _queries.netCentsBetween(cashFlowWindowStart, day);
+    // Clamp the averaging window to actual history — a shop with only 3
+    // days of sales/expense data shouldn't have its 3-day net divided by
+    // a fixed 30 (same principle as productVelocities above).
+    final earliestActivity = await _queries.earliestActivityBetween(
+        cashFlowWindowStart, day);
+    final daysOfData = earliestActivity == null
+        ? 0
+        : (day.difference(localMidnight(earliestActivity)).inDays + 1)
+            .clamp(1, 30);
+    final cashFlow =
+        projectCashFlow(netCentsInWindow: net30, daysOfData: daysOfData);
 
     return ShopSnapshot({
       'date': day.toIso8601String().substring(0, 10),

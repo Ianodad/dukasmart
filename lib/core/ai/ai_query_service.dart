@@ -253,4 +253,31 @@ class AiQueryService {
     final expensesTotal = expenses.fold<int>(0, (sum, e) => sum + e.amount);
     return salesTotal - expensesTotal;
   }
+
+  /// Earliest sale or expense timestamp in [from]..[to], or null when
+  /// there is no activity in the window at all. Used to clamp the
+  /// cash-flow window to actual history the same way [productVelocities]
+  /// clamps its averaging window to days since first sale.
+  Future<DateTime?> earliestActivityBetween(DateTime from, DateTime to) async {
+    final sales = await _salesBetween(from, to);
+    final (start, end) = _rangeBounds(from, to);
+    final expenses = await (_db.select(_db.expenses)
+          ..where((t) =>
+              t.createdAt.isBiggerOrEqualValue(start) &
+              t.createdAt.isSmallerThanValue(end)))
+        .get();
+
+    DateTime? earliest;
+    for (final s in sales) {
+      if (earliest == null || s.createdAt.isBefore(earliest)) {
+        earliest = s.createdAt;
+      }
+    }
+    for (final e in expenses) {
+      if (earliest == null || e.createdAt.isBefore(earliest)) {
+        earliest = e.createdAt;
+      }
+    }
+    return earliest;
+  }
 }
