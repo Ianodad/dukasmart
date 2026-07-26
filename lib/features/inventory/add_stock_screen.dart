@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/theme.dart';
 import '../../core/database/database.dart';
+import '../../core/formatting/money.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/confirmation_dialog.dart';
 import '../../core/widgets/empty_state.dart';
@@ -11,8 +13,10 @@ import '../../core/widgets/primary_button.dart';
 
 /// Renders integer cents as an editable KES string ("5500" -> "55",
 /// "5550" -> "55.50") without ever going through double math (design
-/// D2) — used only to prefill [NumericInputField.money]'s controller, as
-/// its own doc comment suggests for this exact screen.
+/// D2) — used only to prefill [NumericInputField.money]'s controllers.
+/// Display text (e.g. the Confirm Stock Receipt dialog) goes through the
+/// frozen [formatCents] instead (Codex finding: this helper must never be
+/// used for money DISPLAY, only editable-field prefill).
 String centsToInputString(int cents) {
   final shillings = cents ~/ 100;
   final remainder = cents % 100;
@@ -114,8 +118,8 @@ class _AddStockScreenState extends ConsumerState<AddStockScreen> {
       context,
       title: 'Confirm Stock Receipt',
       message: 'Add $qty ${product.unit.label} to "${product.name}"?'
-          '${newPrice != null ? '\nNew buying price: ${centsToInputString(newPrice)} KES' : ''}'
-          '${_paidFromTill ? '\nPaid from till: ${centsToInputString(tillCashOutCents!)} KES' : ''}'
+          '${newPrice != null ? '\nNew buying price: ${formatCents(newPrice)}' : ''}'
+          '${_paidFromTill ? '\nPaid from till: ${formatCents(tillCashOutCents!)}' : ''}'
           '${_noteController.text.trim().isNotEmpty ? '\nNote: ${_noteController.text.trim()}' : ''}',
     );
     if (!confirmed) return;
@@ -227,10 +231,10 @@ class _AddStockScreenState extends ConsumerState<AddStockScreen> {
                   errorText: _tillCashOutError,
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Reduces expected cash at close. Profit is not affected — '
                   'stock cost counts when items sell.',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                  style: AppTextStyles.caption.copyWith(color: AppTokens.inkMuted),
                 ),
               ],
               const SizedBox(height: 12),
