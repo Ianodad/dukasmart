@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme.dart';
 import 'money_text.dart';
 
 /// A single POS cart row with +/-/remove controls and a line total.
@@ -23,25 +24,37 @@ class CartItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(name),
-      subtitle: MoneyText(lineTotalCents),
-      leading: IconButton(
-        icon: const Icon(Icons.delete_outline),
-        onPressed: onRemove,
-        tooltip: 'Remove',
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         children: [
           IconButton(
+            icon: const Icon(Icons.delete_outline),
+            color: AppTokens.red,
+            onPressed: onRemove,
+            tooltip: 'Remove',
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(name, style: AppTextStyles.bodyStrong),
+                const SizedBox(height: 2),
+                MoneyText(lineTotalCents),
+              ],
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.remove_circle_outline),
+            color: AppTokens.inkSecondary,
             onPressed: onDecrement,
             tooltip: 'Decrease quantity',
           ),
-          Text('$quantity', style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text('$quantity', style: AppTextStyles.bodyStrong),
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
+            color: AppTokens.emerald,
             onPressed: onIncrement,
             tooltip: 'Increase quantity',
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/theme.dart';
 import '../../core/database/database.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/barcode_field.dart';
@@ -77,7 +78,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
               controller: _searchController,
               decoration: const InputDecoration(
@@ -105,6 +106,13 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 selected: lowStockOnly,
                 onSelected: (value) =>
                     ref.read(_lowStockOnlyProvider.notifier).state = value,
+                selectedColor: AppTokens.emeraldContainer,
+                checkmarkColor: AppTokens.emeraldDeep,
+                side: BorderSide.none,
+                labelStyle: AppTextStyles.caption.copyWith(
+                  color: lowStockOnly ? AppTokens.emeraldDeep : AppTokens.inkSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -112,12 +120,16 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             child: productsAsync.when(
               data: (products) {
                 if (products.isEmpty) {
-                  return const EmptyState(title: 'No products found.');
+                  return const EmptyState(
+                    title: 'No products found.',
+                    message: 'Try a different search, or add a new product.',
+                    icon: Icons.inventory_2_outlined,
+                  );
                 }
                 return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   itemCount: products.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 1),
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final p = products[index];
                     return Row(
@@ -134,6 +146,13 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         IconButton(
                           icon: const Icon(Icons.add_box_outlined),
                           tooltip: 'Add stock',
+                          style: ButtonStyle(
+                            foregroundColor: WidgetStateProperty.resolveWith(
+                              (states) => states.contains(WidgetState.pressed)
+                                  ? AppTokens.emerald
+                                  : AppTokens.inkMuted,
+                            ),
+                          ),
                           onPressed: () =>
                               context.pushNamed('add-stock', extra: p.id),
                         ),

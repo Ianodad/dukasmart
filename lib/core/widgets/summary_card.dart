@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// A dashboard/close-day metric card: a label plus a prominent value
-/// widget (typically a [MoneyText] or a plain count).
+import '../../app/theme.dart';
+
+/// A dashboard/close-day metric card: overline label + moneyMedium value
+/// (DESIGN.md Component vocabulary). No icon-gradient decor — [icon], if
+/// given, renders as a small plain glyph beside the label.
 class SummaryCard extends StatelessWidget {
   const SummaryCard({
     super.key,
@@ -21,9 +24,9 @@ class SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -33,13 +36,13 @@ class SummaryCard extends StatelessWidget {
               Row(
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 18, color: color),
+                    Icon(icon, size: 16, color: color ?? AppTokens.inkMuted),
                     const SizedBox(width: 6),
                   ],
                   Expanded(
                     child: Text(
-                      label,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      label.toUpperCase(),
+                      style: AppTextStyles.overline,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -47,7 +50,7 @@ class SummaryCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               DefaultTextStyle.merge(
-                style: TextStyle(color: color),
+                style: AppTextStyles.moneyMedium.copyWith(color: color),
                 child: value,
               ),
             ],

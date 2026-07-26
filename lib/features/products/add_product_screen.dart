@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 
+import '../../app/theme.dart';
 import '../../core/database/database.dart';
 import '../../core/database/enums.dart';
 import '../../core/database/errors.dart';
@@ -355,10 +356,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     padding: const EdgeInsets.only(top: 4, left: 12),
                     child: Text(
                       _barcodeError!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                        fontSize: 12,
-                      ),
+                      style: AppTextStyles.caption.copyWith(color: AppTokens.red),
                     ),
                   ),
                 const SizedBox(height: 12),
@@ -403,9 +401,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Text('Profit per unit: '),
-                      if (profit < 0) const Text('-'),
-                      MoneyText(profit.abs()),
+                      Text('Profit per unit: ', style: AppTextStyles.caption.copyWith(color: AppTokens.inkMuted)),
+                      MoneyText(
+                        profit,
+                        style: AppTextStyles.caption.copyWith(
+                          color: profit >= 0 ? AppTokens.emerald : AppTokens.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -466,6 +469,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 /// when the typed barcode or name exactly matches an existing product
 /// (UAT feedback: "make it easy to add a product that is already in
 /// inventory instead of writing the whole description").
+///
+/// DESIGN.md color rule: amberContainer tint always pairs with amber text,
+/// and the banner uses a FULL border — never a side-stripe accent.
 class _DuplicateProductBanner extends StatelessWidget {
   const _DuplicateProductBanner({
     required this.product,
@@ -477,8 +483,13 @@ class _DuplicateProductBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.amber.shade100,
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      decoration: BoxDecoration(
+        color: AppTokens.amberContainer,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTokens.amber),
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
         child: Row(
@@ -486,7 +497,7 @@ class _DuplicateProductBanner extends StatelessWidget {
           children: [
             const Padding(
               padding: EdgeInsets.only(top: 2),
-              child: Icon(Icons.info_outline, color: Colors.black87),
+              child: Icon(Icons.info_outline, color: AppTokens.amber, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -496,7 +507,7 @@ class _DuplicateProductBanner extends StatelessWidget {
                   Text(
                     'Already in inventory: ${product.name} — '
                     '${product.quantity} ${product.unit.label} in stock',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: AppTextStyles.bodyStrong.copyWith(color: AppTokens.amber),
                   ),
                   const SizedBox(height: 8),
                   FilledButton(
@@ -508,7 +519,7 @@ class _DuplicateProductBanner extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.close),
+              icon: const Icon(Icons.close, color: AppTokens.amber),
               tooltip: 'Dismiss',
               onPressed: onDismiss,
             ),
@@ -543,13 +554,7 @@ class _CommonProductSheet extends ConsumerWidget {
               padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'Choose common product',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: Text('Choose common product', style: AppTextStyles.title),
               ),
             ),
             Expanded(
@@ -565,15 +570,24 @@ class _CommonProductSheet extends ConsumerWidget {
                     subtitle: Row(
                       children: [
                         Text('${item.unit.label} · Buy '),
-                        MoneyText(item.buyingPriceCents),
+                        MoneyText(
+                          item.buyingPriceCents,
+                          style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600),
+                        ),
                         const Text(' · Sell '),
-                        MoneyText(item.sellingPriceCents),
+                        MoneyText(
+                          item.sellingPriceCents,
+                          style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600),
+                        ),
                       ],
                     ),
                     trailing: match != null
                         ? Text(
                             'In stock: ${match.quantity}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppTokens.inkSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           )
                         : null,
                     onTap: () {
