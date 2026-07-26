@@ -53,6 +53,12 @@ void main() {
       expect(request.headers['content-type'], 'application/json');
       expect(request.headers['x-api-key'], 'test-key');
       expect(request.headers['anthropic-version'], '2023-06-01');
+      // Required for the Chrome demo target: without it the browser's CORS
+      // preflight to api.anthropic.com is rejected (400, no
+      // access-control-allow-origin), fetch throws ClientException, and the
+      // UI misreports "You're offline" while online.
+      expect(
+          request.headers['anthropic-dangerous-direct-browser-access'], 'true');
       final body = jsonDecode(request.body) as Map<String, dynamic>;
       expect(body['model'], 'claude-opus-5');
       expect(body['max_tokens'], 2048);

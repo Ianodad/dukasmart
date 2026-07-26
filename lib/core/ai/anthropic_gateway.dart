@@ -232,6 +232,13 @@ Never mention numbers that are not in the snapshot.''';
               'content-type': 'application/json',
               'x-api-key': apiKey,
               'anthropic-version': AiConfig.anthropicVersion,
+              // Opts in to direct browser->API calls on the Chrome demo
+              // target: the API's CORS preflight rejects browser requests
+              // without it, which surfaces as ClientException and a bogus
+              // "You're offline" bubble. Harmless on non-web platforms.
+              // Exposing the key client-side is the spec's accepted
+              // demo-only tradeoff (production path is a backend proxy).
+              'anthropic-dangerous-direct-browser-access': 'true',
             },
             body: jsonEncode(body),
           )
