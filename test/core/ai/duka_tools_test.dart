@@ -68,10 +68,40 @@ void main() {
   });
 
   test('get_projections returns stock projections and cash flow', () async {
+    // Established shop: real activity well before the 30-day cash-flow
+    // window, so days_of_data clamps up to the full 30.
+    await db.expensesDao.recordExpense(
+      amountCents: 500,
+      category: ExpenseCategory.other,
+      method: PaymentMethod.cash,
+      selectedDate: DateTime.now().subtract(const Duration(days: 45)),
+    );
+
     final out = await dispatcher.execute('get_projections', {});
     final json = jsonDecode(out) as Map<String, dynamic>;
     expect(json['stock_projections'], isA<List>());
     expect((json['cash_flow'] as Map)['days_of_data'], 30);
+  });
+
+  test(
+      'get_projections clamps days_of_data to actual shop history, not a '
+      'fixed 30', () async {
+    // Brand-new shop: only 2 days of history. avg_daily_net_cents must be
+    // net over 2 days, not net divided by a fixed 30 (which would silently
+    // under-estimate the figure narrated back to the shopkeeper).
+    final now = DateTime.now();
+    await db.expensesDao.recordExpense(
+      amountCents: 1000,
+      category: ExpenseCategory.other,
+      method: PaymentMethod.cash,
+      selectedDate: now.subtract(const Duration(days: 1)),
+    );
+
+    final out = await dispatcher.execute('get_projections', {});
+    final json = jsonDecode(out) as Map<String, dynamic>;
+    final cashFlow = json['cash_flow'] as Map<String, dynamic>;
+    expect(cashFlow['days_of_data'], 2);
+    expect(cashFlow['avg_daily_net_cents'], -1000 ~/ 2);
   });
 
   test('bad date input -> error JSON, never a throw', () async {

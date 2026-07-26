@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../database/day_bounds.dart';
 import 'ai_query_service.dart';
 import 'projection_service.dart';
 
@@ -136,12 +137,27 @@ class DukaToolDispatcher {
           final velocities = await _queries.productVelocities(asOf: now);
           final net30 = await _queries.netCentsBetween(
               now.subtract(const Duration(days: 29)), now);
+          // Clamp the averaging window to actual history — same principle
+          // as snapshot_builder.dart's cash-flow projection: a shop with
+          // only a few days of data shouldn't have its real net divided
+          // by a fixed 30, which would silently under-estimate the
+          // avg/projected figures the AI narrates back to the shopkeeper.
+          final earliestActivity =
+              await _queries.earliestActivityBetween(null, now);
+          final daysOfData = earliestActivity == null
+              ? 0
+              : (localMidnight(now)
+                          .difference(localMidnight(earliestActivity))
+                          .inDays +
+                      1)
+                  .clamp(1, 30);
           return jsonEncode({
             'stock_projections': [
               for (final p in projectStockRunOut(velocities)) p.toJson(),
             ],
-            'cash_flow':
-                projectCashFlow(netCentsInWindow: net30, daysOfData: 30).toJson(),
+            'cash_flow': projectCashFlow(
+                    netCentsInWindow: net30, daysOfData: daysOfData)
+                .toJson(),
           });
         default:
           return jsonEncode({'error': 'Unknown tool: $name'});
