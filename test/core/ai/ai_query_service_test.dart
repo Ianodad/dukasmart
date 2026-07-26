@@ -187,6 +187,34 @@ void main() {
     expect(unspecified['count'], 1);
   });
 
+  test(
+      'expensesSummary caps by_reason at reasonLimit distinct entries and '
+      'folds the remainder into an "Other" bucket', () async {
+    final now = DateTime.now();
+    // 3 distinct free-text reasons, each 1000c, well under a limit of 2.
+    for (final reason in ['Boda', 'Diesel', 'Airtime top-up']) {
+      await db.expensesDao.recordExpense(
+        amountCents: 1000,
+        category: ExpenseCategory.other,
+        description: reason,
+        method: PaymentMethod.cash,
+        selectedDate: now,
+      );
+    }
+
+    final json = await service.expensesSummary(now, now, reasonLimit: 2);
+    expect(json['total_expenses_cents'], 3000);
+    final byReason = (json['by_reason'] as List).cast<Map>();
+    // Capped to reasonLimit (2) + one "Other" overflow bucket.
+    expect(byReason, hasLength(3));
+    final other = byReason.singleWhere((r) => r['reason'] == 'Other');
+    expect(other['total_cents'], 1000);
+    expect(other['count'], 1);
+    // Totals across all buckets still reconcile with the grand total.
+    final sum = byReason.fold<int>(0, (s, r) => s + (r['total_cents'] as int));
+    expect(sum, 3000);
+  });
+
   group('stockLevels', () {
     test('all products with low flags', () async {
       final json = await service.stockLevels();

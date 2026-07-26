@@ -56,8 +56,9 @@ class DukaToolDispatcher {
               '(Stock transport, Stock purchase, Electricity, Airtime, Food, '
               'Rent, Repairs, Personal withdrawal, Other) and by reason (the '
               'free-text note recorded with each expense, or "Unspecified" '
-              'when none was given). Always aggregated totals and counts — '
-              'never individual expense rows.',
+              'when none was given; capped to the top entries by total, with '
+              'the remainder folded into "Other"). Always aggregated totals '
+              'and counts — never individual expense rows.',
       'input_schema': {
         'type': 'object',
         'properties': {

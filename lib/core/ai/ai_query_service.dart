@@ -96,7 +96,21 @@ class AiQueryService {
     };
   }
 
-  Future<Map<String, Object?>> expensesSummary(DateTime from, DateTime to) async {
+  /// [reasonLimit] caps the number of distinct `by_reason` buckets returned
+  /// (mirrors [topProducts]'s `limit` param and [SnapshotBuilder]'s
+  /// `_maxStockProjections`): `by_reason` groups by the free-text expense
+  /// description, which is unbounded and has no category-style enum, and
+  /// this result is embedded verbatim in every insight snapshot
+  /// (`expenses_last_30_days` etc. in snapshot_builder.dart), so an uncapped
+  /// array would grow with a shop's history of distinct expense notes.
+  /// Entries beyond the cap are folded into a single "Other" bucket (by
+  /// total, descending) rather than dropped, so totals/counts still
+  /// reconcile against `total_expenses_cents`.
+  Future<Map<String, Object?>> expensesSummary(
+    DateTime from,
+    DateTime to, {
+    int reasonLimit = 20,
+  }) async {
     final (start, end) = _rangeBounds(from, to);
     final rows = await (_db.select(_db.expenses)
           ..where((t) =>
@@ -126,6 +140,19 @@ class AiQueryService {
       ..sort((a, b) => b.value.total.compareTo(a.value.total));
     final rankedReason = byReason.entries.toList()
       ..sort((a, b) => b.value.total.compareTo(a.value.total));
+    final cappedReason = <({String reason, int total, int count})>[
+      for (final e in rankedReason.take(reasonLimit))
+        (reason: e.key, total: e.value.total, count: e.value.count),
+    ];
+    if (rankedReason.length > reasonLimit) {
+      final overflow = rankedReason.skip(reasonLimit);
+      final overflowTotal =
+          overflow.fold<int>(0, (sum, e) => sum + e.value.total);
+      final overflowCount =
+          overflow.fold<int>(0, (sum, e) => sum + e.value.count);
+      cappedReason
+          .add((reason: 'Other', total: overflowTotal, count: overflowCount));
+    }
 
     return {
       'from': _dateString(from),
@@ -144,12 +171,12 @@ class AiQueryService {
           },
       ],
       'by_reason': [
-        for (final e in rankedReason)
+        for (final e in cappedReason)
           {
-            'reason': e.key,
-            'total_cents': e.value.total,
-            'total_display': formatCents(e.value.total),
-            'count': e.value.count,
+            'reason': e.reason,
+            'total_cents': e.total,
+            'total_display': formatCents(e.total),
+            'count': e.count,
           },
       ],
     };
