@@ -12,6 +12,10 @@ StockStatus stockStatusFor({required int quantity, required int threshold}) {
   return StockStatus.inStock;
 }
 
+/// Pill status chip — tint container + deep text (DESIGN.md color rule:
+/// tint containers always pair with their deep text, never with ink). In
+/// Stock uses the neutral surfaceMuted/inkSecondary pair rather than a
+/// semantic tint, since it isn't an attention state.
 class StockStatusChip extends StatelessWidget {
   const StockStatusChip({super.key, required this.quantity, required this.threshold});
 
@@ -21,17 +25,21 @@ class StockStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = stockStatusFor(quantity: quantity, threshold: threshold);
-    final (label, color) = switch (status) {
-      StockStatus.outOfStock => ('Out of Stock', AppColors.error),
-      StockStatus.lowStock => ('Low Stock', AppColors.warning),
-      StockStatus.inStock => ('In Stock', AppColors.success),
+    final (label, background, foreground) = switch (status) {
+      StockStatus.outOfStock => ('Out of Stock', AppTokens.redContainer, AppTokens.red),
+      StockStatus.lowStock => ('Low Stock', AppTokens.amberContainer, AppTokens.amber),
+      StockStatus.inStock => ('In Stock', AppTokens.surfaceMuted, AppTokens.inkSecondary),
     };
 
-    return Chip(
-      label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
-      backgroundColor: color,
-      visualDensity: VisualDensity.compact,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+    return DecoratedBox(
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Text(
+          label,
+          style: AppTextStyles.caption.copyWith(color: foreground, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 }
