@@ -1,13 +1,14 @@
-# Handoff — Fable 5 (orchestrator) — DukaSmart / Phase T + UAT-feedback features / Mid-UAT #2
+# Handoff — Fable 5 (orchestrator) — DukaSmart / Phase I tail / UAT #2 PASSED
 
 ## Current State
-Phases F and T are BUILT and merged into `phase/integration`. Ian PASSED UAT #1
-(foundation). **UAT #2 (full-app walkthrough) is IN PROGRESS** — Ian has been
-actively testing and filed two feedback items, BOTH already built, verified, and
-committed (see Completed). Latest verified state: `flutter analyze` 0 issues,
-**78/78 tests pass**, app boots in Chrome cleanly. UAT #2 has NOT been declared
-passed yet. Reviews remain DEFERRED to one consolidated pass after all phases
-(Ian, 2026-07-25). Nothing merged to `main`. No remote.
+Phases F and T BUILT and merged into `phase/integration`; UAT-feedback features,
+the full Codex-review fold, and the slate+emerald UI restyle all landed (see
+Completed). **UAT #2 PASSED (Ian, 2026-07-26 ~04:10, on the restyled app).**
+Latest verified state: `flutter analyze` 0 issues, **125/125 tests pass**.
+Public GitHub repo `Ianodad/dukasmart` created and pushed (main,
+phase/foundation, phase/integration, tag foundation-frozen) per Ian's
+instruction 2026-07-26. `main` still docs-only — merge to main remains gated on
+Ian's explicit go (Hard Rule 14).
 
 ## Decisions Made
 - Execution lane (Ian): PRIMARY account, Agent-tool/Workflow subagents;
