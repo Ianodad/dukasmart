@@ -14,15 +14,30 @@ class StockDao extends DatabaseAccessor<AppDatabase> with _$StockDaoMixin {
 
   /// Increases [productId]'s stock by [qty] (must be > 0), optionally
   /// updates its buying price, and inserts a `stockReceived` movement.
-  /// Single Drift transaction (design D3).
+  /// Single Drift transaction (design D3). [newBuyingPriceCents], when
+  /// provided, must be >= 0 — a negative buying price is rejected before
+  /// any write.
+  ///
+  /// If [tillCashOutCents] is provided (Amendment A1), it must be > 0 and
+  /// an `ExpenseCategory.stockPurchase` cash expense for that amount is
+  /// recorded atomically in the same transaction — it reduces expected
+  /// cash only, never `expensesTotal`/`netResult` (cost reaches profit via
+  /// COGS at sale time).
   Future<void> receiveStock({
     required int productId,
     required int qty,
     int? newBuyingPriceCents,
     String? note,
+    int? tillCashOutCents,
   }) {
     if (qty <= 0) {
       throw DukaError.invalidQuantity('Quantity received must be greater than zero.');
+    }
+    if (newBuyingPriceCents != null && newBuyingPriceCents < 0) {
+      throw DukaError.invalidAmount('Buying price cannot be negative.');
+    }
+    if (tillCashOutCents != null && tillCashOutCents <= 0) {
+      throw DukaError.invalidAmount('Amount paid from till must be greater than zero.');
     }
     return transaction(() async {
       final product = await (select(products)..where((t) => t.id.equals(productId)))
@@ -49,6 +64,16 @@ class StockDao extends DatabaseAccessor<AppDatabase> with _$StockDaoMixin {
           createdAt: DateTime.now(),
         ),
       );
+
+      if (tillCashOutCents != null) {
+        await attachedDatabase.expensesDao.recordExpense(
+          amountCents: tillCashOutCents,
+          category: ExpenseCategory.stockPurchase,
+          description: 'Stock: ${product.name} ×$qty',
+          method: PaymentMethod.cash,
+          selectedDate: DateTime.now(),
+        );
+      }
     });
   }
 }

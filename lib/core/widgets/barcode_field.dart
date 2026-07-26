@@ -5,6 +5,11 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 /// barcode [TextField] plus a scan [IconButton] that opens a full-screen
 /// [MobileScanner]. Scanner failures degrade to manual entry through
 /// [MobileScanner.errorBuilder] — never a bare try/catch.
+///
+/// Manual entry triggers [onScanned] too (Codex fix — previously manual
+/// entry never triggered lookup): submitting the keyboard (Enter/Done) or
+/// tapping the trailing search icon invokes [onScanned] with the trimmed,
+/// non-empty field text.
 class BarcodeField extends StatelessWidget {
   const BarcodeField({
     super.key,
@@ -16,6 +21,13 @@ class BarcodeField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final ValueChanged<String>? onScanned;
+
+  void _submitManualEntry() {
+    final value = controller.text.trim();
+    if (value.isNotEmpty) {
+      onScanned?.call(value);
+    }
+  }
 
   Future<void> _scan(BuildContext context) async {
     final result = await Navigator.of(context).push<String>(
@@ -31,12 +43,24 @@ class BarcodeField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      textInputAction: TextInputAction.search,
+      onSubmitted: (_) => _submitManualEntry(),
       decoration: InputDecoration(
         labelText: label,
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.qr_code_scanner),
-          tooltip: 'Scan barcode',
-          onPressed: () => _scan(context),
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: 'Look up barcode',
+              onPressed: _submitManualEntry,
+            ),
+            IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              tooltip: 'Scan barcode',
+              onPressed: () => _scan(context),
+            ),
+          ],
         ),
       ),
     );

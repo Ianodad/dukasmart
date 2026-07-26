@@ -50,7 +50,12 @@ class DailyCloseDao extends DatabaseAccessor<AppDatabase> with _$DailyCloseDaoMi
         cogs = items.fold<int>(0, (sum, i) => sum + i.buyingPriceSnapshot * i.quantity);
       }
 
-      final expensesTotal = dayExpenses.fold<int>(0, (sum, e) => sum + e.amount);
+      // Amendment A1 (D4): stockPurchase rows reduce expected cash only —
+      // their cost reaches profit via COGS at sale time, so they're
+      // excluded here.
+      final expensesTotal = dayExpenses
+          .where((e) => e.category != ExpenseCategory.stockPurchase)
+          .fold<int>(0, (sum, e) => sum + e.amount);
       final cashExpenses = dayExpenses
           .where((e) => e.paymentMethod == PaymentMethod.cash)
           .fold<int>(0, (sum, e) => sum + e.amount);
@@ -90,5 +95,15 @@ class DailyCloseDao extends DatabaseAccessor<AppDatabase> with _$DailyCloseDaoMi
   Future<DailyClose?> getClose(DateTime date) {
     final normalizedDate = localMidnight(date);
     return (select(dailyCloses)..where((t) => t.date.equals(normalizedDate))).getSingleOrNull();
+  }
+
+  /// The most recently closed day (by [DailyCloses.date]), or `null` if no
+  /// day has ever been closed. Backs the dashboard's "Daily Report" quick
+  /// action, which jumps straight to the latest report.
+  Future<DailyClose?> latestClose() {
+    return (select(dailyCloses)
+          ..orderBy([(t) => OrderingTerm.desc(t.date)])
+          ..limit(1))
+        .getSingleOrNull();
   }
 }

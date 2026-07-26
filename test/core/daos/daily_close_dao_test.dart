@@ -89,5 +89,57 @@ void main() {
       expect(rows.single.totalSales, 200);
       expect(rows.single.note, 'second close');
     });
+
+    test('Amendment A1: a cash stockPurchase expense reduces expectedCash '
+        'only, not expenses/netResult', () async {
+      final productId = await insertProduct(buyingPrice: 100, sellingPrice: 200);
+      final today = DateTime.now();
+
+      await db.salesDao.completeSale(
+        lines: [(productId: productId, quantity: 2)],
+        method: PaymentMethod.cash,
+        amountReceivedCents: 400,
+      );
+      await db.expensesDao.recordExpense(
+        amountCents: 150,
+        category: ExpenseCategory.airtime,
+        method: PaymentMethod.cash,
+        selectedDate: today,
+      );
+      await db.expensesDao.recordExpense(
+        amountCents: 1000,
+        category: ExpenseCategory.stockPurchase,
+        method: PaymentMethod.cash,
+        selectedDate: today,
+      );
+
+      await db.dailyCloseDao.closeDay(date: today, actualCashCents: 0, note: 'a1 close');
+
+      final close = await db.dailyCloseDao.getClose(today);
+      expect(close, isNotNull);
+      // expenses/netResult exclude the stockPurchase row.
+      expect(close!.expenses, 150);
+      expect(close.netResult, 50); // grossProfit 200 (400 - cogs 200) - expenses 150
+      // expectedCash includes it: cashSales 400 - cashExpenses (150 + 1000)
+      expect(close.expectedCash, -750);
+    });
+  });
+
+  group('latestClose', () {
+    test('returns null when no day has ever been closed', () async {
+      expect(await db.dailyCloseDao.latestClose(), isNull);
+    });
+
+    test('returns the most recently closed day by date', () async {
+      final today = DateTime.now();
+      final yesterday = today.subtract(const Duration(days: 1));
+
+      await db.dailyCloseDao.closeDay(date: yesterday, actualCashCents: 0, note: 'yesterday');
+      await db.dailyCloseDao.closeDay(date: today, actualCashCents: 0, note: 'today');
+
+      final latest = await db.dailyCloseDao.latestClose();
+      expect(latest, isNotNull);
+      expect(latest!.note, 'today');
+    });
   });
 }

@@ -1,20 +1,29 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme.dart';
 import 'primary_button.dart';
 
 /// Every list/screen with nothing to show renders this (design D8: "Every
 /// list has an EmptyState"). Also used verbatim by Foundation stub
 /// screens: `EmptyState(title: '<Screen> — under construction')`.
+///
+/// DESIGN.md Component vocabulary: icon in a surfaceMuted circle, title +
+/// an optional one-line [message] hint, optional action — teaches the
+/// screen, never just "nothing here".
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
     required this.title,
+    this.message,
     this.icon = Icons.inbox_outlined,
     this.actionLabel,
     this.onAction,
   });
 
   final String title;
+
+  /// Optional one-line hint shown under [title].
+  final String? message;
   final IconData icon;
   final String? actionLabel;
   final VoidCallback? onAction;
@@ -27,15 +36,20 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: Theme.of(context).colorScheme.outline),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(color: AppTokens.surfaceMuted, shape: BoxShape.circle),
+              child: Icon(icon, size: 32, color: AppTokens.inkSecondary),
             ),
+            const SizedBox(height: 16),
+            Text(title, textAlign: TextAlign.center, style: AppTextStyles.title),
+            if (message != null) ...[
+              const SizedBox(height: 4),
+              Text(message!, textAlign: TextAlign.center, style: AppTextStyles.caption),
+            ],
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               PrimaryButton(label: actionLabel!, onPressed: onAction),
             ],
           ],

@@ -23,36 +23,38 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _openDatabaseThenGoHome() async {
-    final db = ref.read(databaseProvider);
-    // `customStatement` round-trips through the executor, forcing it to
-    // actually open (and, on first run, complete onCreate seeding) before
-    // we navigate — waits for DB open per design F5.
-    await db.customStatement('SELECT 1');
+    // Waits for the database to open (and, on first run, finish onCreate
+    // seeding) via the core readiness API before we navigate — design F5.
+    await ref.read(databaseReadyProvider.future);
     if (!mounted) return;
     context.go('/home');
   }
 
   @override
   Widget build(BuildContext context) {
+    // DESIGN.md "Splash": surfaceDark full-bleed, app name onDark headline,
+    // tagline caption, subtle loader — no logo invention, no animation
+    // choreography.
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      backgroundColor: AppTokens.surfaceDark,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.storefront, size: 72, color: Colors.white),
+            const Icon(Icons.storefront, size: 56, color: AppTokens.onDark),
             const SizedBox(height: 16),
-            const Text(
-              'DukaSmart',
-              style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
-            ),
+            Text('DukaSmart', style: AppTextStyles.headline.copyWith(color: AppTokens.onDark)),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Know your stock. Grow your business.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: AppTextStyles.caption.copyWith(color: AppTokens.onDark),
             ),
             const SizedBox(height: 32),
-            const CircularProgressIndicator(color: Colors.white),
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTokens.onDark),
+            ),
           ],
         ),
       ),

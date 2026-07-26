@@ -47,7 +47,7 @@ class ConfirmationDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(false),
           child: Text(cancelLabel),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(confirmLabel),
         ),

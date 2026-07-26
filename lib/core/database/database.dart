@@ -96,6 +96,15 @@ class AppDatabase extends _$AppDatabase {
         },
       );
 
+  /// Trivial readiness check (design F5) via a real drift query-builder
+  /// call — no raw SQL. Round-tripping through the executor forces it to
+  /// actually open and, on first run, finish `onCreate` seeding before
+  /// this completes. Lives in core so callers (e.g. the splash screen)
+  /// never reach for raw SQL of their own (Codex R1 #3).
+  Future<void> ready() async {
+    await (select(products)..limit(1)).get();
+  }
+
   /// True first-run seeding (design D3): runs exactly once inside
   /// `onCreate`, when the database file is first created. Seeds the 5 demo
   /// products AND an `openingStock` movement for each.

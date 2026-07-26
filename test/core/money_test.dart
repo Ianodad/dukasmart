@@ -40,5 +40,21 @@ void main() {
     test('formats zero', () {
       expect(formatCents(0), 'KES 0');
     });
+
+    test('formats a negative amount with cents, keeping the sign', () {
+      expect(formatCents(-125), 'KES -1.25');
+    });
+
+    test('formats a negative amount under one shilling, keeping the sign', () {
+      expect(formatCents(-50), 'KES -0.50');
+    });
+
+    test('formats a negative whole-shilling amount without decimals', () {
+      expect(formatCents(-100), 'KES -1');
+    });
+
+    test('formats a large negative amount with grouping', () {
+      expect(formatCents(-1245000), 'KES -12,450');
+    });
   });
 }

@@ -18,9 +18,37 @@ class ProductsDao extends DatabaseAccessor<AppDatabase> with _$ProductsDaoMixin 
   /// never caller-supplied). If [openingQty] > 0, also inserts an
   /// `openingStock` movement for the new product. Throws
   /// [DukaError.duplicateBarcode] when [p]'s barcode is non-empty and
-  /// already used by another product.
+  /// already used by another product. Also throws (before any write) when
+  /// [p]'s name is empty/whitespace, [p]'s buyingPrice/sellingPrice is
+  /// negative, [openingQty] is negative, or [p]'s lowStockThreshold is
+  /// negative — `null` prices stay allowed.
   Future<int> createProduct(ProductsCompanion p, {required int openingQty}) {
     return transaction(() async {
+      final name = p.name.present ? p.name.value : '';
+      if (name.trim().isEmpty) {
+        throw DukaError('Product name is required.');
+      }
+
+      final buyingPrice = p.buyingPrice.present ? p.buyingPrice.value : null;
+      if (buyingPrice != null && buyingPrice < 0) {
+        throw DukaError.invalidAmount('Buying price cannot be negative.');
+      }
+
+      final sellingPrice = p.sellingPrice.present ? p.sellingPrice.value : null;
+      if (sellingPrice != null && sellingPrice < 0) {
+        throw DukaError.invalidAmount('Selling price cannot be negative.');
+      }
+
+      if (openingQty < 0) {
+        throw DukaError.invalidQuantity('Opening quantity cannot be negative.');
+      }
+
+      final lowStockThreshold =
+          p.lowStockThreshold.present ? p.lowStockThreshold.value : null;
+      if (lowStockThreshold != null && lowStockThreshold < 0) {
+        throw DukaError.invalidQuantity('Low stock threshold cannot be negative.');
+      }
+
       final barcode = p.barcode.present ? p.barcode.value : null;
       if (barcode != null && barcode.isNotEmpty) {
         final existing = await (select(products)

@@ -69,11 +69,12 @@ Expense _expense({
   required int id,
   required int amount,
   required PaymentMethod method,
+  ExpenseCategory category = ExpenseCategory.other,
 }) {
   return Expense(
     id: id,
     amount: amount,
-    category: ExpenseCategory.other,
+    category: category,
     description: null,
     paymentMethod: method,
     createdAt: DateTime.now(),
@@ -219,6 +220,36 @@ void main() {
       );
 
       expect(metrics.bestSeller!.name, 'Apple');
+    });
+
+    test('Amendment A1: a cash stockPurchase expense reduces expected cash '
+        'only, not expensesTotal/netResult', () {
+      final expenses = [
+        _expense(id: 1, amount: 500, method: PaymentMethod.cash), // normal
+        _expense(
+          id: 2,
+          amount: 2000,
+          method: PaymentMethod.cash,
+          category: ExpenseCategory.stockPurchase,
+        ),
+      ];
+
+      final metrics = computeDailyMetrics(
+        products: const [],
+        sales: const [],
+        saleItems: const [],
+        expenses: expenses,
+      );
+
+      // expensesTotal/netResult exclude the stockPurchase row.
+      expect(metrics.expensesTotal, 500);
+      expect(metrics.netResult, -500); // grossProfit 0 - expensesTotal 500
+
+      // cashExpenses (and therefore expectedCash = cashSales - cashExpenses)
+      // include it.
+      expect(metrics.cashExpenses, 2500);
+      final expectedCash = metrics.cashSales - metrics.cashExpenses;
+      expect(expectedCash, -2500);
     });
   });
 }

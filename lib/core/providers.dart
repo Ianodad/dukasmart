@@ -55,10 +55,24 @@ final dailyMetricsProvider = StreamProvider<DailyMetrics>((ref) {
   return _watchDailyMetrics(db);
 });
 
+/// Resolves once the database has finished opening — and, on first run,
+/// finished `onCreate` seeding — via the core [AppDatabase.ready] API
+/// (design F5). The splash screen awaits this instead of running its own
+/// raw SQL against `databaseProvider` (Codex R1 #3).
+final databaseReadyProvider = FutureProvider<void>((ref) async {
+  final db = ref.watch(databaseProvider);
+  await db.ready();
+});
+
 /// The frozen Daily Report contract for a given [date] (design D4). Null
 /// when that day has not been closed yet.
+///
+/// `autoDispose` (Codex R1 #2): an always-alive family would cache a
+/// report forever, so re-closing a day or later stock changes could show
+/// a stale report. Disposing when the last screen stops watching forces a
+/// fresh read on every visit.
 final closedDayReportProvider =
-    FutureProvider.family<ClosedDayReport?, DateTime>((ref, date) async {
+    FutureProvider.autoDispose.family<ClosedDayReport?, DateTime>((ref, date) async {
   final db = ref.watch(databaseProvider);
   final close = await ref.watch(dailyCloseDaoProvider).getClose(date);
   if (close == null) return null;
@@ -85,68 +99,116 @@ final closedDayReportProvider =
   );
 });
 
-/// Combines live watches of products, today's sales (+ their sale_items)
-/// and today's expenses into a single [DailyMetrics] stream. Kept out of
-/// any single DAO because it composes reads across every table (design
-/// D3: `DailyMetrics` lives in Foundation, not in any one DAO).
+/// Pure helper (Codex R1 #1 — midnight rollover): the [Duration] from
+/// [now] until the next local-midnight boundary strictly after [now].
+/// Side-effect-free so the boundary math is directly unit-testable
+/// without touching a timer or a database.
+Duration untilNextLocalMidnight(DateTime now) {
+  final startOfToday = localMidnight(now);
+  final nextMidnight = startOfToday.add(const Duration(days: 1));
+  return nextMidnight.difference(now);
+}
+
+/// One authoritative, transactionally-consistent [DailyMetrics] stream
+/// (Codex R1 #1). Every emission is triggered by one of three sources —
+/// an immediate initial tick, a drift table-update notification for any
+/// of the source tables, or a self-rescheduling local-midnight timer —
+/// and, on every trigger, day bounds are recomputed fresh from
+/// `DateTime.now()` and ALL source tables are read inside ONE
+/// `db.transaction(...)` before a single result is emitted. There is no
+/// cross-stream combining left to produce a mixed intermediate snapshot,
+/// and an app left open past midnight rolls over to the new day on its
+/// own via the timer.
 Stream<DailyMetrics> _watchDailyMetrics(AppDatabase db) {
-  final bounds = dayBounds(DateTime.now());
-  final controller = StreamController<DailyMetrics>.broadcast();
+  StreamSubscription<Set<TableUpdate>>? tableSub;
+  Timer? midnightTimer;
+  var closed = false;
+  var emitting = false;
+  var pending = false;
+  late final StreamController<DailyMetrics> controller;
 
-  List<Product>? products;
-  List<Sale>? sales;
-  List<SaleItem>? saleItems;
-  List<Expense>? expenses;
+  Future<void> emitSnapshot() async {
+    final bounds = dayBounds(DateTime.now());
+    await db.transaction(() async {
+      final products = await db.select(db.products).get();
+      final sales = await (db.select(db.sales)
+            ..where((t) =>
+                t.createdAt.isBiggerOrEqualValue(bounds.start) &
+                t.createdAt.isSmallerThanValue(bounds.end)))
+          .get();
+      final saleIds = sales.map((s) => s.id).toList();
+      final saleItems = saleIds.isEmpty
+          ? <SaleItem>[]
+          : await (db.select(db.saleItems)..where((t) => t.saleId.isIn(saleIds))).get();
+      final expenses = await (db.select(db.expenses)
+            ..where((t) =>
+                t.createdAt.isBiggerOrEqualValue(bounds.start) &
+                t.createdAt.isSmallerThanValue(bounds.end)))
+          .get();
 
-  void recompute() {
-    if (products == null || sales == null || saleItems == null || expenses == null) return;
-    controller.add(
-      computeDailyMetrics(
-        products: products!,
-        sales: sales!,
-        saleItems: saleItems!,
-        expenses: expenses!,
-      ),
-    );
+      if (!closed) {
+        controller.add(
+          computeDailyMetrics(
+            products: products,
+            sales: sales,
+            saleItems: saleItems,
+            expenses: expenses,
+          ),
+        );
+      }
+    });
   }
 
-  final subscriptions = <StreamSubscription<void>>[];
-
-  subscriptions.add(
-    db.select(db.products).watch().listen((rows) {
-      products = rows;
-      recompute();
-    }, onError: controller.addError),
-  );
-
-  final salesQuery = db.select(db.sales)
-    ..where((t) =>
-        t.createdAt.isBiggerOrEqualValue(bounds.start) & t.createdAt.isSmallerThanValue(bounds.end));
-  subscriptions.add(
-    salesQuery.watch().listen((rows) async {
-      sales = rows;
-      final ids = rows.map((s) => s.id).toList();
-      saleItems =
-          ids.isEmpty ? <SaleItem>[] : await (db.select(db.saleItems)..where((t) => t.saleId.isIn(ids))).get();
-      recompute();
-    }, onError: controller.addError),
-  );
-
-  final expensesQuery = db.select(db.expenses)
-    ..where((t) =>
-        t.createdAt.isBiggerOrEqualValue(bounds.start) & t.createdAt.isSmallerThanValue(bounds.end));
-  subscriptions.add(
-    expensesQuery.watch().listen((rows) {
-      expenses = rows;
-      recompute();
-    }, onError: controller.addError),
-  );
-
-  controller.onCancel = () async {
-    for (final s in subscriptions) {
-      await s.cancel();
+  // Coalesces bursts of triggers arriving while a snapshot read is still
+  // in flight into a single trailing re-read, instead of stacking one
+  // transaction per trigger.
+  Future<void> trigger() async {
+    if (closed) return;
+    if (emitting) {
+      pending = true;
+      return;
     }
-  };
+    emitting = true;
+    try {
+      await emitSnapshot();
+    } catch (error, stackTrace) {
+      if (!closed) controller.addError(error, stackTrace);
+    } finally {
+      emitting = false;
+      if (pending && !closed) {
+        pending = false;
+        unawaited(trigger());
+      }
+    }
+  }
+
+  void scheduleMidnightTimer() {
+    midnightTimer?.cancel();
+    midnightTimer = Timer(untilNextLocalMidnight(DateTime.now()), () {
+      scheduleMidnightTimer();
+      unawaited(trigger());
+    });
+  }
+
+  controller = StreamController<DailyMetrics>(
+    onListen: () {
+      closed = false;
+      scheduleMidnightTimer();
+      tableSub = db
+          .tableUpdates(TableUpdateQuery.onAllTables(
+            [db.products, db.sales, db.saleItems, db.expenses],
+          ))
+          .listen((_) => unawaited(trigger()));
+      unawaited(trigger()); // immediate initial tick
+    },
+    onCancel: () async {
+      closed = true;
+      midnightTimer?.cancel();
+      midnightTimer = null;
+      await tableSub?.cancel();
+      tableSub = null;
+    },
+  );
 
   return controller.stream;
 }

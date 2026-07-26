@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// A bold section label with an optional trailing action (e.g. "Attention
-/// Needed" on the Home Dashboard).
+import '../../app/theme.dart';
+
+/// A section label with an optional trailing action (e.g. "Attention
+/// Needed" on the Home Dashboard). 24dp top space per DESIGN.md spacing.
 class SectionHeader extends StatelessWidget {
   const SectionHeader(this.title, {super.key, this.trailing});
 
@@ -11,14 +13,11 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(top: 24, bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          Text(title, style: AppTextStyles.title),
           ?trailing,
         ],
       ),
