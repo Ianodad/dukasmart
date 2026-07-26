@@ -147,7 +147,7 @@ Signatures (FROZEN):
 Future<int> createProduct(ProductsCompanion p, {required int openingQty});      // tx: insert + openingStock movement if qty>0; duplicate non-empty barcode → throw DukaError.duplicateBarcode
 Stream<List<Product>> watchProducts({String? query, bool lowStockOnly = false});
 Future<Product?> getByBarcode(String barcode);
-Future<void> updateProduct(Product p);                                          // sets updatedAt
+Future<void> updateProduct(Product p);                                          // sets updatedAt; NEVER writes quantity — implementation must exclude the quantity column (stock changes only via receiveStock/completeSale per design D3)
 // StockDao
 Future<void> receiveStock({required int productId, required int qty, int? newBuyingPriceCents, String? note}); // tx: qty>0, +quantity, optional price update, stockReceived movement
 // SalesDao
@@ -156,6 +156,7 @@ Future<SaleWithItems> getSale(int saleId);
 // ExpensesDao
 Future<void> recordExpense({required int amountCents, required ExpenseCategory category, String? description, required PaymentMethod method, required DateTime selectedDate}); // design D3 createdAt semantics; amount>0; future date → throw
 Stream<List<Expense>> watchExpensesForDay(DateTime day);
+Stream<List<Expense>> watchRecentExpenses({int limit = 100});   // newest-first across days — Expense List source, makes design D3's date-vs-time display reachable for backdated entries
 // DailyCloseDao
 Future<void> closeDay({required DateTime date, required int actualCashCents, String? note}); // tx: recompute D4 aggregates from tables, upsert by date
 Future<DailyClose?> getClose(DateTime date);
@@ -184,7 +185,7 @@ class ClosedDayReport {        // design D4: Daily Report contract
 }
 ```
 
-- [ ] `providers.dart` (FROZEN registrations): `databaseProvider`, per-DAO providers, `dailyMetricsProvider = StreamProvider<DailyMetrics>` (today, live-recomputed via drift watch on sales/sale_items/expenses/products), `closedDayReportProvider = FutureProvider.family<ClosedDayReport?, DateTime>`, `productsProvider`, `expensesTodayProvider`.
+- [ ] `providers.dart` (FROZEN registrations): `databaseProvider`, per-DAO providers, `dailyMetricsProvider = StreamProvider<DailyMetrics>` (today, live-recomputed via drift watch on sales/sale_items/expenses/products), `closedDayReportProvider = FutureProvider.family<ClosedDayReport?, DateTime>`, `productsProvider`, `expensesTodayProvider`, `recentExpensesProvider` (streams `watchRecentExpenses`).
 - [ ] Unit-test DailyMetrics math (design D10): known fixture → every D4 number, best-seller tie → higher revenue → alphabetical; no sales → null bestSeller. Commit `feat: DailyMetrics + ClosedDayReport read models`.
 
 ### Task F5: Theme, shared widgets, router, splash, stubs
@@ -193,8 +194,8 @@ class ClosedDayReport {        // design D4: Daily Report contract
 
 - [ ] Theme per requirements §Design direction: seed `Color(0xFF1B5E20)` dark green, Material 3, light; amber warn, red error, blue M-PESA accent const; large text styles for totals.
 - [ ] `BarcodeField` (design D7): manual barcode `TextField` + scan `IconButton` → full-screen `MobileScanner` with `errorBuilder` fallback returning to manual entry — the ONLY scanner wrapper any track may use.
-- [ ] Shared widget contracts: `MoneyText(int cents, {TextStyle? style})` (sole money renderer); `NumericInputField` returns validated cents/int qty via `parseKesToCents`; `PaymentMethodSelector(PaymentMethod, onChanged)`; others take plain data + callbacks.
-- [ ] Router (FROZEN route table, design D6): `StatefulShellRoute.indexedStack` tabs `/home /sell /products /expenses`; pushed: `/home/add-stock`, `/home/low-stock`, `/home/close-day`, `/home/report`, `/products/add`, `/sell/payment`, `/sell/success/:saleId`; `/` = Splash (Foundation-owned) → waits for DB open → `context.go('/home')`.
+- [ ] Shared widget contracts: `MoneyText(int cents, {TextStyle? style})` (sole money renderer); `NumericInputField` has two explicit modes (design D2): `NumericInputField.money` returns cents via `parseKesToCents`; `NumericInputField.quantity` returns a plain non-negative `int` (digits-only validation — NEVER routed through `parseKesToCents`); `PaymentMethodSelector(PaymentMethod, onChanged)`; others take plain data + callbacks.
+- [ ] Router (FROZEN route table, design D6): `StatefulShellRoute.indexedStack` tabs `/home /sell /products /expenses`; pushed: `/home/add-stock`, `/home/low-stock`, `/home/close-day`, `/home/report`, `/products/add`, `/expenses/add` (Record Expense), `/sell/payment`, `/sell/success/:saleId`; `/` = Splash (Foundation-owned) → waits for DB open → `context.go('/home')`. Every route is registered with a frozen `name:` (kebab-case of its last path segment, e.g. `add-stock`, `expense-add`, `sale-success`); tracks navigate by these frozen paths/names only.
 - [ ] Stub screens: every route's screen file exists in its feature folder rendering `EmptyState(title: '<Screen> — under construction')`. Tracks replace stub bodies (design D6 write rule).
 - [ ] `flutter analyze` clean; `flutter test` green; app boots in Chrome to Home stub. Commit `feat: app shell — theme, router, widgets, splash, stubs`. **Tag `foundation-frozen`.**
 
@@ -202,12 +203,12 @@ class ClosedDayReport {        // design D4: Daily Report contract
 
 ## Phase T — Tracks (4 parallel Sonnet executors, worktrees off `foundation-frozen`)
 
-Common rules for every track: modify/add files ONLY inside your `lib/features/<feature>/` dir; consume frozen DAOs/providers/widgets — never raw drift; `MoneyText` for every amount; every list gets `EmptyState`; submit buttons disabled while an async submit is in flight (design D3); `flutter analyze` clean + `flutter test` green before done; report done/diverged/blocked + file list.
+Common rules for every track: modify/add files ONLY inside your `lib/features/<feature>/` dir plus `test/features/<feature>/` for your tests (nowhere else); consume frozen DAOs/providers/widgets — never raw drift; `MoneyText` for every amount; every list gets `EmptyState`; submit buttons disabled while an async submit is in flight, guarded by a feature-local Riverpod notifier/AsyncValue in-flight flag (design D3); every failed DAO call surfaces a SnackBar with the error and stays on the screen (design D8); `flutter analyze` clean + `flutter test` green before done; report done/diverged/blocked + file list.
 
 ### Task T1: Products & Inventory (`phase/track-products`) — `lib/features/products/` + `lib/features/inventory/`
 
 - [ ] **Product List** (`/products`): watchProducts stream; ProductListTile rows (name, MoneyText selling price or "No price", qty + unit label, StockStatusChip: qty==0 red Out of Stock / qty<=threshold amber Low Stock / green In Stock); search field (name contains, case-insensitive); low-stock filter chip; `BarcodeField` scan → filter to match else "Product not found" snackbar; FAB → `/products/add`.
-- [ ] **Add Product** (`/products/add`): fields name*, BarcodeField, image (image_picker → copy file to `getApplicationDocumentsDirectory()`, store durable path; hide option on web — design D7), buying price, selling price (nullable — empty = null, `NumericInputField`), opening qty (int ≥0, default 0), unit dropdown (ProductUnit labels), threshold (default 5). Live "Profit per unit" row when both prices set. Save → `createProduct(companion, openingQty)`; duplicateBarcode error → inline field error. Cancel/save → back to list.
+- [ ] **Add Product** (`/products/add`): fields name*, BarcodeField, image (image_picker → copy file to `getApplicationDocumentsDirectory()`, store durable path; hide option on web — design D7), buying price, selling price (nullable — empty = null, `NumericInputField`), opening qty (int ≥0, default 0), unit dropdown (ProductUnit labels), threshold (default 5). Live "Profit per unit" row when both prices set. Save → `createProduct(companion, openingQty: qty)` (named arg — frozen F3 signature); duplicateBarcode error → inline field error. Cancel/save → back to list.
 - [ ] **Add Stock** (`/home/add-stock`): product dropdown (or preselected via `extra`), qty received* (>0), latest buying price (prefilled current, optional change), note → ConfirmationDialog summary → `receiveStock` → snackbar + pop.
 - [ ] **Low Stock** (`/home/low-stock`): products where qty<=threshold; rows show name, qty, threshold, price; actions: Add Stock (→ `/home/add-stock` with product preselected), View Product → **bottom sheet** (design D5) with details + Add Stock button. EmptyState: "No low-stock products. Well stocked!"
 
@@ -220,8 +221,8 @@ Common rules for every track: modify/add files ONLY inside your `lib/features/<f
 
 ### Task T3: Expenses & Dashboard UI (`phase/track-expenses`) — `lib/features/expenses/` + `lib/features/dashboard/` (dashboard_screen.dart only; splash is frozen)
 
-- [ ] **Expense List** (`/expenses`): today's total (from `dailyMetricsProvider.expensesTotal`); `watchExpensesForDay(today)` list — category label, MoneyText amount, method, time (same-day entries show time; backdated show date — design D3); Record Expense button.
-- [ ] **Record Expense** (`/expenses` push or inline route): amount* (>0), category dropdown*, description, method*, date picker (default today; future dates blocked) → `recordExpense` → pop + snackbar.
+- [ ] **Expense List** (`/expenses`): today's total (from `dailyMetricsProvider.expensesTotal`); `recentExpensesProvider` list (newest first, across days) — category label, MoneyText amount, method, time for same-day entries / date for backdated-older entries (design D3); Record Expense button → push `/expenses/add`.
+- [ ] **Record Expense** (`/expenses/add`, frozen route): amount* (>0), category dropdown*, description, method*, date picker (default today; future dates blocked) → `recordExpense` → pop + snackbar.
 - [ ] **Home Dashboard** (`/home`): renders `dailyMetricsProvider` ONLY (no new aggregates — design D1): SummaryCards for today's sales, cash, M-PESA, expenses, gross profit, low-stock count; quick actions New Sale / Add Product / Add Stock / Record Expense / Close Day (navigate to frozen routes); **Attention Needed** SectionHeader + list: low-stock (amber), out-of-stock (red), missing buying price, missing selling price — each row tappable to the relevant screen; EmptyState "All good!" when empty; loading/error states for the stream.
 
 ### Task T4: Daily Close & Report (`phase/track-close`) — `lib/features/daily_close/`
