@@ -133,6 +133,5 @@ test/                  Unit tests (money math, DAO invariants, close-day math,
                        insight generator) — no widget-test suite by design
 ```
 
-Business logic stays flat: `lib/core/` for the shared/frozen data layer,
-`lib/features/<feature>/` for everything feature-specific. No
+
 repository/use-case layering.
