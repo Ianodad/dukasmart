@@ -254,17 +254,25 @@ class AiQueryService {
     return salesTotal - expensesTotal;
   }
 
-  /// Earliest sale or expense timestamp in [from]..[to], or null when
-  /// there is no activity in the window at all. Used to clamp the
-  /// cash-flow window to actual history the same way [productVelocities]
-  /// clamps its averaging window to days since first sale.
-  Future<DateTime?> earliestActivityBetween(DateTime from, DateTime to) async {
-    final sales = await _salesBetween(from, to);
-    final (start, end) = _rangeBounds(from, to);
+  /// Earliest sale or expense timestamp at or before [to], or null when
+  /// there is no activity at all. [from] is an optional lower bound; when
+  /// omitted the lookup is unbounded (searches the shop's whole history),
+  /// which is what callers need to tell "genuinely less than N days of
+  /// history" apart from "N days of history with a quiet day near the
+  /// start of the averaging window". Used to clamp the cash-flow window
+  /// to actual history the same way [productVelocities] clamps its
+  /// averaging window to days since first sale.
+  Future<DateTime?> earliestActivityBetween(DateTime? from, DateTime to) async {
+    final end = dayBounds(to).end;
+    final start = from == null ? null : dayBounds(from).start;
+    Expression<bool> inRange(Expression<DateTime> createdAt) => start == null
+        ? createdAt.isSmallerThanValue(end)
+        : createdAt.isBiggerOrEqualValue(start) & createdAt.isSmallerThanValue(end);
+
+    final sales =
+        await (_db.select(_db.sales)..where((t) => inRange(t.createdAt))).get();
     final expenses = await (_db.select(_db.expenses)
-          ..where((t) =>
-              t.createdAt.isBiggerOrEqualValue(start) &
-              t.createdAt.isSmallerThanValue(end)))
+          ..where((t) => inRange(t.createdAt)))
         .get();
 
     DateTime? earliest;

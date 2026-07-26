@@ -58,4 +58,34 @@ void main() {
     final snapshot = await builder.build(DateTime.now());
     expect((snapshot.json['stock_projections'] as List).length, lessThanOrEqualTo(8));
   });
+
+  test(
+      'days_of_data stays at 30 for an established shop even with a quiet '
+      "day at the cash-flow window's leading edge", () async {
+    final now = DateTime.now();
+    // Real activity well before the 30-day cash-flow window — this shop
+    // has been trading for 45+ days.
+    await db.expensesDao.recordExpense(
+      amountCents: 500,
+      category: ExpenseCategory.other,
+      method: PaymentMethod.cash,
+      selectedDate: now.subtract(const Duration(days: 45)),
+    );
+    // Quiet on the first two days of the window itself (closed for a
+    // trip, restocking, a holiday) — trading resumes after that.
+    await db.expensesDao.recordExpense(
+      amountCents: 1000,
+      category: ExpenseCategory.other,
+      method: PaymentMethod.cash,
+      selectedDate: now.subtract(const Duration(days: 27)),
+    );
+
+    final snapshot = await builder.build(now);
+    final cashFlow = snapshot.json['cash_flow'] as Map;
+
+    // The shop genuinely traded the full 30-day window; a quiet day or
+    // two right at the window's edge must not shrink days_of_data below
+    // 30 for a shop with real history further back.
+    expect(cashFlow['days_of_data'], 30);
+  });
 }

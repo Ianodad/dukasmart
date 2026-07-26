@@ -44,9 +44,13 @@ class SnapshotBuilder {
         await _queries.netCentsBetween(cashFlowWindowStart, day);
     // Clamp the averaging window to actual history — a shop with only 3
     // days of sales/expense data shouldn't have its 3-day net divided by
-    // a fixed 30 (same principle as productVelocities above).
-    final earliestActivity = await _queries.earliestActivityBetween(
-        cashFlowWindowStart, day);
+    // a fixed 30 (same principle as productVelocities above). The lookup
+    // is deliberately unbounded (not limited to cashFlowWindowStart..day):
+    // an established shop that was simply quiet on the first day or two
+    // of the 30-day window (closed for a trip, a holiday) still has full
+    // history further back, and must not have daysOfData under-counted.
+    final earliestActivity =
+        await _queries.earliestActivityBetween(null, day);
     final daysOfData = earliestActivity == null
         ? 0
         : (day.difference(localMidnight(earliestActivity)).inDays + 1)
