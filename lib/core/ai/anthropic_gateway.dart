@@ -205,7 +205,7 @@ Never mention numbers that are not in the snapshot.''';
 
   static String _joinText(List<Map<String, dynamic>> content) => content
       .where((b) => b['type'] == 'text')
-      .map((b) => (b['text'] as String?) ?? '')
+      .map((b) => b['text'] is String ? b['text'] as String : '')
       .join()
       .trim();
 
@@ -238,10 +238,16 @@ Never mention numbers that are not in the snapshot.''';
           .timeout(timeout);
     } on TimeoutException {
       throw const AiUnavailableError(AiFailureKind.offline);
-    } on http.ClientException {
-      // package:http wraps socket failures in ClientException on every
-      // platform, including web — never catch dart:io SocketException
-      // here, that import would break the Chrome dev target.
+    } catch (e) {
+      // package:http wraps most socket failures in ClientException, but
+      // that only holds for connection-setup errors and for the web
+      // client's full lifecycle: on native platforms (IOClient) a
+      // mid-stream drop (e.g. wifi hand-off after headers arrive but
+      // before the body finishes) surfaces as a raw dart:io
+      // SocketException instead. Catch broadly here rather than `on
+      // http.ClientException` alone, so any transport-level failure maps
+      // to "offline" — this avoids importing dart:io directly, which
+      // would break the Chrome web dev target.
       throw const AiUnavailableError(AiFailureKind.offline);
     }
 
