@@ -63,24 +63,33 @@ passed yet. Reviews remain DEFERRED to one consolidated pass after all phases
     test gap LOW → noted; (c) doc header LOW → fixed in Fix-A.
   - Remaining Codex MEDs live in UI-2 specs: payment `_mpesaPrefilled`
     (UI-2B), barcode manual submit + dashboard Daily Report action (UI-1).
+- **"Slate + Emerald Pro" UI restyle COMPLETE (Ian-approved direction,
+  2026-07-26 ~03:00–04:00), merged `8f6467b` on `phase/integration`,
+  verified 125/125 + analyze 0.** PRODUCT.md + DESIGN.md at repo root are the
+  BINDING design contract for all future UI work. Structure: UI-1 core
+  (bundled Lexend fonts as offline assets, theme.dart rewritten to
+  AppTokens/AppTextStyles + full ThemeData, all core/widgets restyled
+  API-compatible, dark-band app bar, dashboard showpiece + Daily Report quick
+  action + DailyCloseDao.latestClose(), barcode manual-submit fix) then
+  UI-2A/B/C parallel screen sweeps (products/inventory/splash, sales incl.
+  M-PESA prefill fix, expenses/close/report ledger treatment). All six work
+  branches merged and deleted; worktrees removed.
+- Test map extension: 88 → 107 (codex fixes) → 114 (UI-1) → 125 (UI-2A/B/C).
 
 ## Remaining
-1. **UI restyle in flight ("Slate + Emerald Pro", Ian-approved 2026-07-26).**
-   PRODUCT.md + DESIGN.md committed (`520073c`, binding). UI-1 executor
-   (fonts/theme/core widgets/shell/dashboard) running on `phase/ui-polish`
-   worktree. Then: merge phase/integration → phase/ui-polish, dispatch UI-2A/B/C
-   parallel screen sweeps (specs ready in session scratchpad: ui-2{a,b,c}-spec.md;
-   branches ui/products-inventory, ui/sales, ui/money-screens), merge all back,
-   verify, restart dev server.
-2. **Codex consolidated review DONE → REVISE; code H/M folded** (see Completed).
-   Still open from verdict: payment M-PESA prefill fix (in UI-2B spec), dialog
-   formatCents fix (in UI-2A spec), process gates (= items 3–5 here).
-3. **Finish UAT #2** incl. new-UI visual pass + catalog price check.
+1. **Finish UAT #2** incl. FULL new-UI visual pass (slate+emerald restyle landed,
+   see Completed) + catalog price check.
    Dev server: `cd ~/Documents/Flutter/dukasmart && export PATH="$HOME/flutter/bin:$PATH" && flutter run -d chrome --web-port=8770`
-4. Phase I tail: Android run via adb (physical device preferred; FLAG IAN before
-   any ~1GB emulator download), `flutter build apk --release`, README (DONE in
-   fix/money-daos), `docs/plans/SYNTHESIS.md`.
-5. Merge `phase/foundation` + `phase/integration` → `main` ONLY on Ian's explicit
+   (pkill gotcha EXTENDED: never put the pkill and the relaunch in ONE command
+   line — the relaunch half's literal "web-port=8770" makes pkill kill the
+   compound shell itself. Kill and launch in separate commands.)
+2. Codex verdict fully folded — every code H/M/L from the REVISE list is now
+   fixed and merged (see Completed). Remaining Codex items are process gates
+   only (= items 3–4 here: Android acceptance, APK, synthesis, then merge).
+3. Phase I tail: Android run via adb (physical device preferred; FLAG IAN before
+   any ~1GB emulator download), `flutter build apk --release`, README (DONE),
+   `docs/plans/SYNTHESIS.md`.
+4. Merge `phase/foundation` + `phase/integration` → `main` ONLY on Ian's explicit
    go; push is a separate go (no remote yet).
 
 ## Open Flags
