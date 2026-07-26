@@ -119,22 +119,26 @@ class DukaToolDispatcher {
     try {
       switch (name) {
         case 'get_sales_summary':
+          final range = _dateRange(input);
           return jsonEncode(
-              await _queries.salesSummary(_date(input, 'from'), _date(input, 'to')));
+              await _queries.salesSummary(range.from, range.to));
         case 'get_top_products':
+          final range = _dateRange(input);
           final limit = (_intOrNull(input, 'limit') ?? 5).clamp(1, 20);
           return jsonEncode(await _queries.topProducts(
-              _date(input, 'from'), _date(input, 'to'),
+              range.from, range.to,
               limit: limit));
         case 'get_expenses':
-          return jsonEncode(await _queries.expensesSummary(
-              _date(input, 'from'), _date(input, 'to')));
+          final range = _dateRange(input);
+          return jsonEncode(
+              await _queries.expensesSummary(range.from, range.to));
         case 'get_stock_levels':
           return jsonEncode(
-              await _queries.stockLevels(lowOnly: input['low_only'] == true));
+              await _queries.stockLevels(lowOnly: _boolOrNull(input, 'low_only') ?? false));
         case 'get_daily_closes':
-          return jsonEncode(await _queries.dailyCloses(
-              _date(input, 'from'), _date(input, 'to')));
+          final range = _dateRange(input);
+          return jsonEncode(
+              await _queries.dailyCloses(range.from, range.to));
         case 'get_projections':
           final now = DateTime.now();
           final velocities = await _queries.productVelocities(asOf: now);
@@ -174,10 +178,18 @@ class DukaToolDispatcher {
   /// numbers as JSON strings despite an integer schema — accept those too.
   /// Never throws a raw TypeError; bad shapes become FormatException so
   /// they're caught by [execute]'s error handling, same as [_date].
+  /// Non-integer numbers (e.g. `2.5`) are rejected — silently truncating
+  /// them would hide a malformed model call.
   static int? _intOrNull(Map<String, Object?> input, String key) {
     final raw = input[key];
     if (raw == null) return null;
-    if (raw is num) return raw.toInt();
+    if (raw is int) return raw;
+    if (raw is num) {
+      if (raw != raw.truncateToDouble()) {
+        throw FormatException('Invalid "$key" (expected integer, got "$raw").');
+      }
+      return raw.toInt();
+    }
     if (raw is String) {
       final parsed = int.tryParse(raw);
       if (parsed != null) return parsed;
@@ -185,15 +197,54 @@ class DukaToolDispatcher {
     throw FormatException('Invalid "$key" (expected integer, got "$raw").');
   }
 
+  /// Reads an optional boolean input. Rejects any non-bool shape (numbers,
+  /// strings like "true", null-ish sentinels) rather than silently
+  /// coercing — a truthy-looking string must not be treated as false.
+  static bool? _boolOrNull(Map<String, Object?> input, String key) {
+    final raw = input[key];
+    if (raw == null) return null;
+    if (raw is bool) return raw;
+    throw FormatException('Invalid "$key" (expected boolean, got "$raw").');
+  }
+
+  static final RegExp _strictDatePattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+
+  /// Parses a strict `YYYY-MM-DD` date. Rejects anything that doesn't
+  /// match the pattern exactly, and anything that parses but doesn't
+  /// round-trip back to the same string (e.g. "2024-02-30" is normalized
+  /// by [DateTime.parse] to March 2 — that's a silent corruption, not a
+  /// valid date, from the model's point of view).
   static DateTime _date(Map<String, Object?> input, String key) {
     final raw = input[key];
     if (raw is! String) {
       throw FormatException('Missing or non-string "$key" (expected YYYY-MM-DD).');
     }
+    if (!_strictDatePattern.hasMatch(raw)) {
+      throw FormatException('Invalid "$key" date "$raw" (expected YYYY-MM-DD).');
+    }
     final parsed = DateTime.tryParse(raw);
     if (parsed == null) {
       throw FormatException('Invalid "$key" date "$raw" (expected YYYY-MM-DD).');
     }
+    final roundTrip = '${parsed.year.toString().padLeft(4, '0')}-'
+        '${parsed.month.toString().padLeft(2, '0')}-'
+        '${parsed.day.toString().padLeft(2, '0')}';
+    if (roundTrip != raw) {
+      throw FormatException('Invalid "$key" date "$raw" (expected YYYY-MM-DD).');
+    }
     return parsed;
+  }
+
+  /// Parses `from`/`to` together and rejects an inverted range
+  /// (`from > to`) as a single error, instead of letting each tool query
+  /// silently run on a nonsensical window.
+  static ({DateTime from, DateTime to}) _dateRange(Map<String, Object?> input) {
+    final from = _date(input, 'from');
+    final to = _date(input, 'to');
+    if (from.isAfter(to)) {
+      throw FormatException(
+          'Invalid range: "from" (${input['from']}) is after "to" (${input['to']}).');
+    }
+    return (from: from, to: to);
   }
 }

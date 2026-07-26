@@ -142,4 +142,103 @@ void main() {
     final json = jsonDecode(out) as Map<String, dynamic>;
     expect(json['error'], 'Unknown tool: get_weather');
   });
+
+  // --- R7: malformed model input must return an error JSON, never throw ---
+
+  group('R7 malformed input', () {
+    test('get_sales_summary: non-round-trip date (2024-02-30) -> error',
+        () async {
+      final out = await dispatcher.execute(
+          'get_sales_summary', {'from': '2024-02-30', 'to': today()});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_sales_summary: loosely-formatted date (2024-1-5) -> error',
+        () async {
+      final out = await dispatcher.execute(
+          'get_sales_summary', {'from': '2024-1-5', 'to': today()});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_sales_summary: from > to -> error, never a throw', () async {
+      final out = await dispatcher.execute('get_sales_summary',
+          {'from': today(), 'to': '2000-01-01'});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_top_products: from > to -> error', () async {
+      final out = await dispatcher.execute('get_top_products',
+          {'from': today(), 'to': '2000-01-01'});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_top_products: non-int limit ("five") -> error JSON', () async {
+      final out = await dispatcher.execute('get_top_products',
+          {'from': today(), 'to': today(), 'limit': 'five'});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_top_products: non-int limit (bool) -> error JSON', () async {
+      final out = await dispatcher.execute('get_top_products',
+          {'from': today(), 'to': today(), 'limit': true});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_top_products: non-int limit (fractional) -> error JSON',
+        () async {
+      final out = await dispatcher.execute('get_top_products',
+          {'from': today(), 'to': today(), 'limit': 2.5});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_expenses: from > to -> error', () async {
+      final out = await dispatcher.execute(
+          'get_expenses', {'from': today(), 'to': '2000-01-01'});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_expenses: malformed date -> error', () async {
+      final out = await dispatcher
+          .execute('get_expenses', {'from': 'not-a-date', 'to': today()});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_stock_levels: non-bool low_only (string) -> error JSON',
+        () async {
+      final out = await dispatcher
+          .execute('get_stock_levels', {'low_only': 'yes'});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_stock_levels: non-bool low_only (number) -> error JSON',
+        () async {
+      final out = await dispatcher.execute('get_stock_levels', {'low_only': 1});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_daily_closes: from > to -> error', () async {
+      final out = await dispatcher.execute(
+          'get_daily_closes', {'from': today(), 'to': '2000-01-01'});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+
+    test('get_daily_closes: malformed date -> error', () async {
+      final out = await dispatcher
+          .execute('get_daily_closes', {'from': 'nope', 'to': today()});
+      final json = jsonDecode(out) as Map<String, dynamic>;
+      expect(json['error'], isA<String>());
+    });
+  });
 }
