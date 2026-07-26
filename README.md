@@ -54,6 +54,37 @@ adb devices
 flutter run -d <device-id>
 ```
 
+## AI features (optional, online)
+
+DukaSmart's AI features — "Ask your duka" natural-language Q&A and the AI
+daily-report insight — are demo features that activate only when an
+Anthropic API key is provided at build time:
+
+```
+flutter run -d <device-id> --dart-define=ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Without the define, the app is the unchanged offline app: no AI surfaces
+render and no network calls are made. The key is baked into that build
+only — do not distribute an APK built with a real key. All AI tools are
+read-only; money figures shown by the AI are computed locally by the app
+and quoted verbatim.
+
+**Privacy:** when AI features are active, user questions, the conversation
+thread, aggregated tool results, and the daily-close snapshot are sent to
+Anthropic's API. Raw database rows never leave the device — only the
+aggregated JSON produced by the read-only tools and snapshot builder.
+Use a scoped / expiring demo key for any live demo and revoke it
+afterward.
+
+**Known gap:** the Android release/profile manifest carries the
+`INTERNET` permission needed to reach the API from a real device build,
+but this has only been verified by static inspection of the manifest —
+it has not been exercised end-to-end on an Android profile/release build
+in this environment (no device was available). Verify on-device before a
+real demo. The Chrome dev target does not exercise Android permissions at
+all.
+
 ## Release build
 
 ```

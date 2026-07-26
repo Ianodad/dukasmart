@@ -1,3 +1,4 @@
+import 'package:dukasmart/core/ai/ai_providers.dart';
 import 'package:dukasmart/core/database/database.dart';
 import 'package:dukasmart/core/models/daily_metrics.dart';
 import 'package:dukasmart/core/providers.dart';
@@ -81,5 +82,40 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('No closed day yet'), findsOneWidget);
+  });
+
+  testWidgets('ask bar is hidden when AI is not configured', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dailyMetricsProvider.overrideWith((ref) => Stream.value(_fixtureMetrics)),
+          // A10.1: explicit override for the negative case too — never rely
+          // on the test environment merely lacking --dart-define.
+          aiAvailableProvider.overrideWithValue(false),
+        ],
+        child: const MaterialApp(home: DashboardScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    // No --dart-define in tests -> AiConfig.isConfigured is false.
+    expect(find.text('Ask about your duka…'), findsNothing);
+  });
+
+  testWidgets('ask bar renders when AI is configured', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dailyMetricsProvider.overrideWith((ref) => Stream.value(_fixtureMetrics)),
+          aiAvailableProvider.overrideWithValue(true),
+        ],
+        child: const MaterialApp(home: DashboardScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Ask about your duka…'), findsOneWidget);
   });
 }

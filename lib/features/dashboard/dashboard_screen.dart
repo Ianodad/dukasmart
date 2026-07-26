@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../app/theme.dart';
+import '../../core/ai/ai_providers.dart';
 import '../../core/models/daily_metrics.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/empty_state.dart';
@@ -40,7 +41,10 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
       body: metricsAsync.when(
-        data: (metrics) => _DashboardBody(metrics: metrics),
+        data: (metrics) => _DashboardBody(
+          metrics: metrics,
+          aiAvailable: ref.watch(aiAvailableProvider),
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => Center(
           child: Padding(
@@ -64,9 +68,10 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 class _DashboardBody extends StatelessWidget {
-  const _DashboardBody({required this.metrics});
+  const _DashboardBody({required this.metrics, required this.aiAvailable});
 
   final DailyMetrics metrics;
+  final bool aiAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +95,10 @@ class _DashboardBody extends StatelessWidget {
             _MethodDotChip(dotColor: AppTokens.blue, label: 'M-PESA', amountCents: metrics.mpesaSales),
           ],
         ),
+        if (aiAvailable) ...[
+          const SizedBox(height: 16),
+          const _AskDukaBar(),
+        ],
         const SectionHeader('Attention Needed'),
         if (attentionCount == 0)
           const EmptyState(
@@ -333,6 +342,39 @@ class _QuickActionTile extends StatelessWidget {
                   style: AppTextStyles.bodyStrong,
                   overflow: TextOverflow.ellipsis,
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Quiet ask-bar entry point for the AI assistant (spec UX decision:
+/// discoverable without competing with the money numbers — slate
+/// surface, never emerald).
+class _AskDukaBar extends StatelessWidget {
+  const _AskDukaBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTokens.surfaceMuted,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => context.pushNamed('ask'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.auto_awesome_outlined,
+                  size: 18, color: AppTokens.inkSecondary),
+              const SizedBox(width: 10),
+              Text(
+                'Ask about your duka…',
+                style: AppTextStyles.body.copyWith(color: AppTokens.inkMuted),
               ),
             ],
           ),

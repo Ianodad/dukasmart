@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../app/theme.dart';
+import '../../core/ai/ai_providers.dart';
 import '../../core/database/database.dart';
 import '../../core/database/day_bounds.dart';
 import '../../core/models/closed_day_report.dart';
@@ -175,6 +176,7 @@ class _ReportBody extends StatelessWidget {
               ],
             ),
           ),
+          _AiInsightCard(date: close.date),
         ],
       ),
     );
@@ -273,6 +275,66 @@ class _LowStockRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// AI insight card (spec): loads below the deterministic insight when AI
+/// is configured and online. Loading -> subtle progress row; success ->
+/// paragraph; null or failure -> renders nothing (this screen never
+/// shows an AI error state). The rule-based insight above is the
+/// permanent offline fallback.
+class _AiInsightCard extends ConsumerWidget {
+  const _AiInsightCard({required this.date});
+
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(aiAvailableProvider)) return const SizedBox.shrink();
+
+    final insightAsync = ref.watch(aiInsightProvider(date));
+    return insightAsync.when(
+      loading: () => Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'AI insight…',
+              style: AppTextStyles.caption.copyWith(color: AppTokens.inkMuted),
+            ),
+          ],
+        ),
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (insight) {
+        if (insight == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTokens.surfaceMuted,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.auto_awesome_outlined,
+                    color: AppTokens.inkSecondary, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(insight, style: AppTextStyles.body)),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
