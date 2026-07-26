@@ -11,7 +11,8 @@ with a plain-language summary of what happened and why.
 
 [![DukaSmart demo](docs/dukasmart-promo.gif)](docs/dukasmart-promo.mp4)
 
-*Click the preview for the full-quality MP4 ([`docs/dukasmart-promo.mp4`](docs/dukasmart-promo.mp4)).*
+*Click the preview for the full-quality MP4 ([`docs/dukasmart-promo.mp4`](docs/dukasmart-promo.mp4)). There's also a
+presentation deck: [`docs/dukasmart-deck.pptx`](docs/dukasmart-deck.pptx).*
 
 ## Screenshots
 
