@@ -66,13 +66,16 @@ class AiQueryService {
           ..where((t) => t.saleId.isIn(saleIds)))
         .get();
 
-    final byName = <String, ({int qty, int revenue})>{};
+    final byProduct = <int, ({String name, int qty, int revenue})>{};
     for (final item in items) {
-      final prev = byName[item.productName] ?? (qty: 0, revenue: 0);
-      byName[item.productName] =
-          (qty: prev.qty + item.quantity, revenue: prev.revenue + item.total);
+      final prev = byProduct[item.productId];
+      byProduct[item.productId] = (
+        name: prev?.name ?? item.productName,
+        qty: (prev?.qty ?? 0) + item.quantity,
+        revenue: (prev?.revenue ?? 0) + item.total,
+      );
     }
-    final ranked = byName.entries.toList()
+    final ranked = byProduct.entries.toList()
       ..sort((a, b) {
         final byQty = b.value.qty.compareTo(a.value.qty);
         return byQty != 0 ? byQty : b.value.revenue.compareTo(a.value.revenue);
@@ -84,7 +87,7 @@ class AiQueryService {
       'products': [
         for (final e in ranked.take(limit))
           {
-            'name': e.key,
+            'name': e.value.name,
             'quantity_sold': e.value.qty,
             'revenue_cents': e.value.revenue,
             'revenue_display': formatCents(e.value.revenue),
