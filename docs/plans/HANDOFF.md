@@ -1,14 +1,22 @@
-# Handoff — Fable 5 (orchestrator) — DukaSmart / Phase I tail / UAT #2 PASSED
+# Handoff — Fable 5 (orchestrator) — DukaSmart / MVP SHIPPED to main
 
 ## Current State
-Phases F and T BUILT and merged into `phase/integration`; UAT-feedback features,
-the full Codex-review fold, and the slate+emerald UI restyle all landed (see
-Completed). **UAT #2 PASSED (Ian, 2026-07-26 ~04:10, on the restyled app).**
-Latest verified state: `flutter analyze` 0 issues, **125/125 tests pass**.
-Public GitHub repo `Ianodad/dukasmart` created and pushed (main,
-phase/foundation, phase/integration, tag foundation-frozen) per Ian's
-instruction 2026-07-26. `main` still docs-only — merge to main remains gated on
-Ian's explicit go (Hard Rule 14).
+**MVP COMPLETE AND SHIPPED.** On Ian's explicit go (2026-07-26 ~04:20):
+`phase/foundation` + `phase/integration` merged --no-ff into `main`
+(`77f86bc`, `8f386f1`), verified on main (analyze 0, **125/125 tests**,
+zero content diff vs integration tip), pushed to the public repo
+`Ianodad/dukasmart` (default branch now `main`). All phase/track/worktree
+branches deleted locally and on origin; all worktrees removed — repo is
+single-branch `main`. UAT #1 and #2 PASSED. Codex verdict fully folded.
+UI restyle (PRODUCT.md/DESIGN.md contract) shipped.
+
+## Still open (post-ship tail)
+1. Release APK build was running in background at handoff time —
+   confirm artifact at `build/app/outputs/flutter-apk/app-release.apk`.
+2. Android on-device acceptance: no adb device was attached; ~1GB emulator
+   download stays gated on Ian.
+3. No LICENSE in the public repo (all-rights-reserved default) — add on
+   Ian's word.
 
 ## Decisions Made
 - Execution lane (Ian): PRIMARY account, Agent-tool/Workflow subagents;
