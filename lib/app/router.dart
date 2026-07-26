@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/assistant/ask_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/dashboard/splash_screen.dart';
 import '../features/daily_close/close_day_screen.dart';
@@ -45,6 +46,12 @@ final GoRouter appRouter = GoRouter(
               name: 'home',
               builder: (context, state) => const DashboardScreen(),
               routes: [
+                GoRoute(
+                  path: 'ask',
+                  name: 'ask',
+                  parentNavigatorKey: rootNavigatorKey,
+                  builder: (context, state) => const AskScreen(),
+                ),
                 GoRoute(
                   path: 'add-stock',
                   name: 'add-stock',
