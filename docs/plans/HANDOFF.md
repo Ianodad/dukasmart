@@ -11,12 +11,22 @@ single-branch `main`. UAT #1 and #2 PASSED. Codex verdict fully folded.
 UI restyle (PRODUCT.md/DESIGN.md contract) shipped.
 
 ## Still open (post-ship tail)
-1. Release APK build was running in background at handoff time —
-   confirm artifact at `build/app/outputs/flutter-apk/app-release.apk`.
-2. Android on-device acceptance: no adb device was attached; ~1GB emulator
-   download stays gated on Ian.
-3. No LICENSE in the public repo (all-rights-reserved default) — add on
-   Ian's word.
+1. Android ON-DEVICE acceptance only: no adb device was attached; ~1GB
+   emulator download stays gated on Ian. (APK itself is BUILT and RELEASED.)
+2. Ian's `feature/ai-capabilities` branch (his commit `33427c1`, unpushed,
+   checked out in main tree): design spec for v1 AI features — next
+   milestone, plan on his go. Deck/promo commits went to main, not his branch.
+
+## Shipped extras (2026-07-26 early morning)
+- MIT LICENSE (`a9062f5`). 14 screenshots + README gallery (`2a5b3f2`).
+- Remotion promo video (36s 1080p) + GIF preview embedded in README
+  (`8cb2710`); project source in `remotion/`.
+- 10-slide pptx deck `docs/dukasmart-deck.pptx` (`857d2ab`).
+- **GitHub Release `v0.1.0-mvp` LIVE** with `dukasmart-v0.1.0.apk` (75MB,
+  debug-signed) + promo mp4: github.com/Ianodad/dukasmart/releases.
+  NDK 28.2.13676358 installed manually (gradle download hung; direct curl).
+- pkill LESSON (extended): never combine pkill with a relaunch or ANY
+  command whose line contains the plain pattern — bracket-escape always.
 
 ## Decisions Made
 - Execution lane (Ian): PRIMARY account, Agent-tool/Workflow subagents;
