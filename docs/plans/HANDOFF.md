@@ -47,20 +47,40 @@ passed yet. Reviews remain DEFERRED to one consolidated pass after all phases
     (cash)" toggle + editable prefill (`computeTillPrefillCents`); Record Expense
     shows helper text for the category. 88 tests.
 - Handoff committed on `phase/integration` (this file).
+- **Codex consolidated review (gpt-5.6-sol xhigh, 2026-07-26 ~03:00): REVISE —
+  5H/8M/1L** (full text: session task bnusqrgrq output; findings also
+  reflected in fix commits). ALL code H/M folded and verified:
+  - `bbd54e3` Fix-A: negative formatCents sign, createProduct/receiveStock
+    invariant validation, integer M-PESA share, delivery README, design-doc
+    header v1.3. (+13 tests)
+  - `a250d94` Fix-B: dailyMetricsProvider rebuilt as single transactional
+    snapshot (drift tableUpdates + self-rescheduling midnight timer, bounds
+    recomputed per emission), closedDayReportProvider → autoDispose,
+    AppDatabase.ready() + databaseReadyProvider, splash raw SQL removed.
+    (+6 tests)
+  - Merged: `b2f7440` on `phase/integration`; verified 107/107, analyze 0.
+  - Parked adjudications: (a) dialog format LOW → UI-2A spec; (b) dashboard
+    test gap LOW → noted; (c) doc header LOW → fixed in Fix-A.
+  - Remaining Codex MEDs live in UI-2 specs: payment `_mpesaPrefilled`
+    (UI-2B), barcode manual submit + dashboard Daily Report action (UI-1).
 
 ## Remaining
-1. **Finish UAT #2** — Ian still walking: sales (cash w/ change + M-PESA), stock
-   reduction, expenses (incl. backdated), dashboard totals/Attention Needed,
-   close day, daily report + insight. Also confirm/adjust catalog prices.
+1. **UI restyle in flight ("Slate + Emerald Pro", Ian-approved 2026-07-26).**
+   PRODUCT.md + DESIGN.md committed (`520073c`, binding). UI-1 executor
+   (fonts/theme/core widgets/shell/dashboard) running on `phase/ui-polish`
+   worktree. Then: merge phase/integration → phase/ui-polish, dispatch UI-2A/B/C
+   parallel screen sweeps (specs ready in session scratchpad: ui-2{a,b,c}-spec.md;
+   branches ui/products-inventory, ui/sales, ui/money-screens), merge all back,
+   verify, restart dev server.
+2. **Codex consolidated review DONE → REVISE; code H/M folded** (see Completed).
+   Still open from verdict: payment M-PESA prefill fix (in UI-2B spec), dialog
+   formatCents fix (in UI-2A spec), process gates (= items 3–5 here).
+3. **Finish UAT #2** incl. new-UI visual pass + catalog price check.
    Dev server: `cd ~/Documents/Flutter/dukasmart && export PATH="$HOME/flutter/bin:$PATH" && flutter run -d chrome --web-port=8770`
-   Fix-loop further feedback via small executor dispatches on `phase/integration`.
-2. Consolidated review (deferred-to-end): Codex gpt-5.6-sol xhigh over
-   `git diff main...phase/integration` + parked findings below; Sonnet 5 xhigh
-   fallback if Codex unreachable. Fold H/M, note L.
-3. Phase I tail: Android run via adb (physical device preferred; FLAG IAN before
-   any ~1GB emulator download), `flutter build apk --release`, README.md,
-   `docs/plans/SYNTHESIS.md`.
-4. Merge `phase/foundation` + `phase/integration` → `main` ONLY on Ian's explicit
+4. Phase I tail: Android run via adb (physical device preferred; FLAG IAN before
+   any ~1GB emulator download), `flutter build apk --release`, README (DONE in
+   fix/money-daos), `docs/plans/SYNTHESIS.md`.
+5. Merge `phase/foundation` + `phase/integration` → `main` ONLY on Ian's explicit
    go; push is a separate go (no remote yet).
 
 ## Open Flags
