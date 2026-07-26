@@ -312,7 +312,7 @@ class _AiInsightCard extends ConsumerWidget {
           ],
         ),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (insight) {
         if (insight == null) return const SizedBox.shrink();
         return Padding(

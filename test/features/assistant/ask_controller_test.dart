@@ -33,7 +33,7 @@ void main() {
     ]);
     addTearDown(container.dispose);
     // Keep the autoDispose controller alive for the test body.
-    final sub = container.listen(askControllerProvider, (_, __) {});
+    final sub = container.listen(askControllerProvider, (_, _) {});
     addTearDown(sub.close);
   });
 
@@ -95,7 +95,7 @@ void main() {
           .overrideWithValue(DukaToolDispatcher(AiQueryService(db))),
     ]);
     addTearDown(localContainer.dispose);
-    final sub = localContainer.listen(askControllerProvider, (_, __) {});
+    final sub = localContainer.listen(askControllerProvider, (_, _) {});
     addTearDown(sub.close);
 
     await localContainer.read(askControllerProvider.notifier).send('hi');
@@ -117,7 +117,7 @@ void main() {
       // provider, it throws StateError and fails this test.
     ]);
     addTearDown(localContainer.dispose);
-    final sub = localContainer.listen(askControllerProvider, (_, __) {});
+    final sub = localContainer.listen(askControllerProvider, (_, _) {});
     addTearDown(sub.close);
 
     await localContainer.read(askControllerProvider.notifier).send('hello?');
@@ -135,7 +135,7 @@ void main() {
       dukaToolDispatcherProvider
           .overrideWithValue(DukaToolDispatcher(AiQueryService(db))),
     ]);
-    final sub = localContainer.listen(askControllerProvider, (_, __) {});
+    final sub = localContainer.listen(askControllerProvider, (_, _) {});
 
     final sendFuture =
         localContainer.read(askControllerProvider.notifier).send('hello?');
