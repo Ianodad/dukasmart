@@ -7,6 +7,15 @@ products and opening stock, record sales (cash or M-PESA), watch stock
 auto-reduce, log expenses, keep an eye on low-stock items, and close the day
 with a plain-language summary of what happened and why.
 
+## Screenshots
+
+| Dashboard | New Sale | Payment | Sale Complete |
+|---|---|---|---|
+| ![Dashboard](docs/screenshots/13-dashboard-live.png) | ![POS](docs/screenshots/10-pos-cart.png) | ![Payment](docs/screenshots/11-payment.png) | ![Success](docs/screenshots/12-sale-success.png) |
+
+More in [`docs/screenshots/`](docs/screenshots/) — products, expenses, add
+stock, low stock, and close day.
+
 ## Prerequisites
 
 - **Flutter 3.38.3**, installed at `~/flutter` (add to `PATH` before running
