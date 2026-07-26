@@ -4,14 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../app/theme.dart';
+import '../../core/database/database.dart';
 import '../../core/database/day_bounds.dart';
 import '../../core/models/closed_day_report.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/money_text.dart';
-import '../../core/widgets/product_list_tile.dart';
 import '../../core/widgets/section_header.dart';
-import '../../core/widgets/summary_card.dart';
 import 'insight_generator.dart';
 
 /// Daily Report (route `/home/report`, optional `?date=`). Reads the
@@ -19,6 +18,13 @@ import 'insight_generator.dart';
 /// labeled "as at close", the best-seller is derived fresh "for the day",
 /// and the low-stock list reflects "current" stock levels. Shows an
 /// EmptyState with a Close Day shortcut when the day has not been closed.
+///
+/// DESIGN.md "Screen notes -> Close day / Report": figures render as a
+/// clean two-column ledger list (label inkSecondary / value moneySmall
+/// ink) — never a card grid; the qualifier suffixes ("as at close" / "for
+/// the day" / "current") are styled caption/inkMuted; cash difference is
+/// an emerald pair when at/over expected, a red pair when short; the
+/// insight paragraph sits in a surfaceMuted block.
 class DailyReportScreen extends ConsumerWidget {
   const DailyReportScreen({super.key, this.date});
 
@@ -64,123 +70,206 @@ class _ReportBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final close = report.close;
     final bestSeller = report.bestSeller;
-    final diffColor = close.cashDifference >= 0 ? AppColors.success : AppColors.error;
+    final diffColor = close.cashDifference >= 0 ? AppTokens.emerald : AppTokens.red;
+    final lowStock = report.lowStockNow;
+    final note = close.note?.trim();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            DateFormat('EEEE, d MMMM y').format(close.date),
-            style: Theme.of(context).textTheme.titleLarge,
+          Text(DateFormat('EEEE, d MMMM y').format(close.date), style: AppTextStyles.headline),
+          const _QualifiedSectionHeader(title: 'Financials', qualifier: '— as at close'),
+          _MoneyLedgerRow(label: 'Total sales', cents: close.totalSales),
+          const Divider(height: 1),
+          _MoneyLedgerRow(label: 'Cash sales', cents: close.cashSales),
+          const Divider(height: 1),
+          _MoneyLedgerRow(label: 'M-PESA sales', cents: close.mpesaSales),
+          const Divider(height: 1),
+          _MoneyLedgerRow(label: 'Expenses', cents: close.expenses),
+          const Divider(height: 1),
+          _MoneyLedgerRow(label: 'Cost of goods', cents: close.costOfGoods),
+          const Divider(height: 1),
+          _MoneyLedgerRow(label: 'Gross profit', cents: close.grossProfit, emphasize: true),
+          const Divider(height: 1),
+          _MoneyLedgerRow(label: 'Net result', cents: close.netResult, emphasize: true),
+          const Divider(height: 1),
+          _MoneyLedgerRow(label: 'Expected cash', cents: close.expectedCash, emphasize: true),
+          const Divider(height: 1),
+          _MoneyLedgerRow(label: 'Actual cash', cents: close.actualCash),
+          const Divider(height: 1),
+          _MoneyLedgerRow(
+            label: 'Cash difference',
+            cents: close.cashDifference,
+            emphasize: true,
+            color: diffColor,
           ),
-          const SizedBox(height: 16),
-          const SectionHeader('Financials — as at close'),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.8,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            children: [
-              SummaryCard(label: 'Total sales', value: MoneyText(close.totalSales)),
-              SummaryCard(label: 'Cash sales', value: MoneyText(close.cashSales)),
-              SummaryCard(label: 'M-PESA sales', value: MoneyText(close.mpesaSales)),
-              SummaryCard(label: 'Expenses', value: MoneyText(close.expenses)),
-              SummaryCard(label: 'Cost of goods', value: MoneyText(close.costOfGoods)),
-              SummaryCard(label: 'Gross profit', value: MoneyText(close.grossProfit)),
-              SummaryCard(label: 'Net result', value: MoneyText(close.netResult)),
-              SummaryCard(label: 'Expected cash', value: MoneyText(close.expectedCash)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: SummaryCard(label: 'Actual cash', value: MoneyText(close.actualCash)),
+          if (note != null && note.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTokens.surfaceMuted,
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SummaryCard(
-                  label: 'Cash difference',
-                  value: MoneyText(
-                    close.cashDifference,
-                    style: TextStyle(color: diffColor, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (close.note != null && close.note!.trim().isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text('Note: ${close.note}'),
-              ),
+              child: Text('Note: $note', style: AppTextStyles.body),
             ),
           ],
-          const SizedBox(height: 16),
-          const SectionHeader('Best seller — for the day'),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: bestSeller == null
-                  ? const Text('No sales recorded.')
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${bestSeller.name} · ${bestSeller.qtySold} sold',
+          const _QualifiedSectionHeader(title: 'Best seller', qualifier: '— for the day'),
+          bestSeller == null
+              ? Text(
+                  'No sales recorded.',
+                  style: AppTextStyles.body.copyWith(color: AppTokens.inkSecondary),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            bestSeller.name,
+                            style: AppTextStyles.bodyStrong,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        MoneyText(bestSeller.revenue),
-                      ],
+                          Text(
+                            '${bestSeller.qtySold} sold',
+                            style: AppTextStyles.caption.copyWith(color: AppTokens.inkMuted),
+                          ),
+                        ],
+                      ),
                     ),
+                    MoneyText(bestSeller.revenue),
+                  ],
+                ),
+          const _QualifiedSectionHeader(title: 'Low stock', qualifier: '— current'),
+          lowStock.isEmpty
+              ? Text(
+                  'No low-stock products. Well stocked!',
+                  style: AppTextStyles.body.copyWith(color: AppTokens.inkSecondary),
+                )
+              : Column(
+                  children: [
+                    for (var i = 0; i < lowStock.length; i++) ...[
+                      _LowStockRow(product: lowStock[i]),
+                      if (i != lowStock.length - 1) const Divider(height: 1),
+                    ],
+                  ],
+                ),
+          const SectionHeader('Insight'),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTokens.surfaceMuted,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.lightbulb_outline, color: AppTokens.inkSecondary, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(buildInsight(report), style: AppTextStyles.body)),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          const SectionHeader('Low stock — current'),
-          report.lowStockNow.isEmpty
-              ? const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('No low-stock products. Well stocked!'),
-                  ),
-                )
-              : Card(
-                  child: Column(
-                    children: [
-                      for (final product in report.lowStockNow)
-                        ProductListTile(
-                          name: product.name,
-                          sellingPriceCents: product.sellingPrice,
-                          quantity: product.quantity,
-                          unitLabel: product.unit.label,
-                          threshold: product.lowStockThreshold,
-                        ),
-                    ],
-                  ),
-                ),
-          const SizedBox(height: 16),
-          const SectionHeader('Insight'),
-          Card(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.lightbulb_outline),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(buildInsight(report))),
-                ],
-              ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A section header with a muted qualifier suffix on the same line (e.g.
+/// "Financials — as at close") — the qualifier renders caption/inkMuted
+/// exactly as the underlying data source labels it (design D4).
+class _QualifiedSectionHeader extends StatelessWidget {
+  const _QualifiedSectionHeader({required this.title, required this.qualifier});
+
+  final String title;
+  final String qualifier;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(title, style: AppTextStyles.title),
+          const SizedBox(width: 6),
+          Text(qualifier, style: AppTextStyles.caption.copyWith(color: AppTokens.inkMuted)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A ledger row for a money figure: label inkSecondary on the left, value
+/// on the right via [MoneyText] (design D2 — the sole KES renderer).
+/// [emphasize] bumps the value to moneyMedium (gross/net/expected/cash
+/// difference); [color] recolors both label and value as one pair
+/// (emerald when the cash difference is at/over expected, red when
+/// short).
+class _MoneyLedgerRow extends StatelessWidget {
+  const _MoneyLedgerRow({
+    required this.label,
+    required this.cents,
+    this.emphasize = false,
+    this.color,
+  });
+
+  final String label;
+  final int cents;
+  final bool emphasize;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final valueStyle =
+        (emphasize ? AppTextStyles.moneyMedium : AppTextStyles.moneySmall).copyWith(
+      color: color ?? AppTokens.ink,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: AppTextStyles.body.copyWith(color: color ?? AppTokens.inkSecondary)),
+          MoneyText(cents, style: valueStyle),
+        ],
+      ),
+    );
+  }
+}
+
+/// A single low-stock row — DESIGN.md "amber pairs": both the product
+/// name and its remaining quantity render in amber, since every row here
+/// is already known to be low/out of stock (no per-row chip needed).
+class _LowStockRow extends StatelessWidget {
+  const _LowStockRow({required this.product});
+
+  final Product product;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              product.name,
+              style: AppTextStyles.bodyStrong.copyWith(color: AppTokens.amber),
+              overflow: TextOverflow.ellipsis,
             ),
+          ),
+          Text(
+            '${product.quantity} ${product.unit.label}',
+            style: AppTextStyles.caption.copyWith(color: AppTokens.amber, fontWeight: FontWeight.w600),
           ),
         ],
       ),

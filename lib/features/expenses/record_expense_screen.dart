@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../app/theme.dart';
 import '../../core/database/enums.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/numeric_input_field.dart';
@@ -109,20 +110,43 @@ class _RecordExpenseScreenState extends ConsumerState<RecordExpenseScreen> {
               autofocus: true,
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<ExpenseCategory>(
-              initialValue: _category,
-              decoration: InputDecoration(labelText: 'Category', errorText: _categoryError),
-              items: ExpenseCategory.values
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
-                  .toList(),
-              onChanged: submitting ? null : (value) => setState(() => _category = value),
+            Text('Category', style: AppTextStyles.bodyStrong),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final category in ExpenseCategory.values)
+                  ChoiceChip(
+                    label: Text(category.label),
+                    selected: _category == category,
+                    showCheckmark: false,
+                    backgroundColor: AppTokens.surfaceMuted,
+                    selectedColor: AppTokens.emeraldContainer,
+                    side: BorderSide.none,
+                    shape: const StadiumBorder(),
+                    labelStyle: AppTextStyles.caption.copyWith(
+                      color: _category == category ? AppTokens.emeraldDeep : AppTokens.inkSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    onSelected: submitting
+                        ? null
+                        : (selected) {
+                            if (selected) setState(() => _category = category);
+                          },
+                  ),
+              ],
             ),
+            if (_categoryError != null) ...[
+              const SizedBox(height: 4),
+              Text(_categoryError!, style: AppTextStyles.caption.copyWith(color: AppTokens.red)),
+            ],
             if (_category == ExpenseCategory.stockPurchase) ...[
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Cash taken from the till for stock. Reduces expected cash at '
                 'close, not profit — stock cost is counted when items sell.',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
+                style: AppTextStyles.caption.copyWith(color: AppTokens.inkMuted),
               ),
             ],
             const SizedBox(height: 16),
@@ -133,7 +157,7 @@ class _RecordExpenseScreenState extends ConsumerState<RecordExpenseScreen> {
               decoration: const InputDecoration(labelText: 'Description (optional)'),
             ),
             const SizedBox(height: 16),
-            const Text('Payment method', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text('Payment method', style: AppTextStyles.bodyStrong),
             const SizedBox(height: 8),
             PaymentMethodSelector(
               value: _method,
@@ -142,9 +166,13 @@ class _RecordExpenseScreenState extends ConsumerState<RecordExpenseScreen> {
             const SizedBox(height: 16),
             InkWell(
               onTap: submitting ? null : _pickDate,
+              borderRadius: BorderRadius.circular(12),
               child: InputDecorator(
-                decoration: const InputDecoration(labelText: 'Date'),
-                child: Text(dateLabel),
+                decoration: const InputDecoration(
+                  labelText: 'Date',
+                  suffixIcon: Icon(Icons.calendar_today_outlined, size: 20),
+                ),
+                child: Text(dateLabel, style: AppTextStyles.body),
               ),
             ),
             const SizedBox(height: 24),
