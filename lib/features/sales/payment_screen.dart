@@ -55,6 +55,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     });
   }
 
+  /// Codex fix: a rebuild (e.g. the cart total changing while M-PESA is
+  /// selected) used to overwrite whatever the user had typed, because
+  /// [_mpesaPrefilled] only ever got cleared by switching methods — never
+  /// by the user actually editing the field. Any user edit now clears it
+  /// immediately, so the build-time "keep prefill in sync" block below
+  /// stops touching the field once the owner has typed their own amount.
+  void _onAmountEdited(String _) {
+    setState(() => _mpesaPrefilled = false);
+  }
+
   /// `null` when the field's text is invalid/empty for the current method's
   /// rule (design D3 (e)); the parsed cents value otherwise.
   int? _parsedAmount() => NumericInputField.parseValue(_amountController.text, NumericInputMode.money);
@@ -129,6 +139,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final changeDue = (_method == PaymentMethod.cash && amount != null && amount >= totalCents)
         ? amount - totalCents
         : 0;
+    final insufficientCash = _method == PaymentMethod.cash &&
+        _amountController.text.isNotEmpty &&
+        amount != null &&
+        amount < totalCents;
+
+    // Confirm is disabled whenever the current amount fails design D3(e)'s
+    // rule (empty, unparsable, short cash, or mismatched M-PESA) — DESIGN.md
+    // Payment note: "disabled confirm when insufficient".
+    final amountValidationError = _amountError(totalCents);
+    final canSubmit = !submitting && amountValidationError == null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Payment')),
@@ -137,8 +157,15 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Total due'),
-            MoneyText(totalCents, style: AppTextStyles.totalLarge),
+            Center(
+              child: Column(
+                children: [
+                  Text('TOTAL DUE', style: AppTextStyles.overline),
+                  const SizedBox(height: 4),
+                  MoneyText(totalCents, style: AppTextStyles.moneyDisplay),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
             PaymentMethodSelector(
               value: _method,
@@ -146,21 +173,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             ),
             const SizedBox(height: 24),
             NumericInputField.money(
+              key: const Key('payment-amount-field'),
               label: _method == PaymentMethod.cash ? 'Amount received' : 'Amount received (M-PESA)',
               controller: _amountController,
               enabled: !submitting,
-              onChanged: (_) => setState(() {}),
-              errorText: _amountController.text.isEmpty ? null : _amountError(totalCents),
+              onChanged: _onAmountEdited,
+              errorText: _amountController.text.isEmpty ? null : amountValidationError,
             ),
             if (_method == PaymentMethod.cash) ...[
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Change due'),
-                  MoneyText(changeDue, style: AppTextStyles.totalSmall),
-                ],
-              ),
+              _ChangeDueBlock(changeDueCents: changeDue, insufficient: insufficientCash),
             ],
             if (_method == PaymentMethod.mpesa) ...[
               const SizedBox(height: 16),
@@ -174,10 +196,38 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             PrimaryButton(
               label: _method == PaymentMethod.cash ? 'Confirm Cash Payment' : 'Confirm M-PESA Payment',
               loading: submitting,
-              onPressed: submitting ? null : () => _submit(totalCents),
+              onPressed: canSubmit ? () => _submit(totalCents) : null,
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// DESIGN.md Payment note: "change due in emeraldContainer block with
+/// emeraldDeep moneyMedium" — recolors to the red pair while the cash
+/// received so far is short of the total.
+class _ChangeDueBlock extends StatelessWidget {
+  const _ChangeDueBlock({required this.changeDueCents, required this.insufficient});
+
+  final int changeDueCents;
+  final bool insufficient;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = insufficient ? AppTokens.redContainer : AppTokens.emeraldContainer;
+    final foreground = insufficient ? AppTokens.red : AppTokens.emeraldDeep;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(14)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('Change due', style: AppTextStyles.bodyStrong.copyWith(color: foreground)),
+          MoneyText(changeDueCents, style: AppTextStyles.moneyMedium.copyWith(color: foreground)),
+        ],
       ),
     );
   }

@@ -11,6 +11,7 @@ import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/money_text.dart';
 import '../../core/widgets/primary_button.dart';
 import '../../core/widgets/product_list_tile.dart';
+import '../../core/widgets/stock_status_chip.dart';
 import 'cart_notifier.dart';
 
 /// New Sale / POS (route `/sell`).
@@ -109,7 +110,17 @@ class _SellScreenState extends ConsumerState<SellScreen> {
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final product = filtered[index];
-                    final disabled = product.sellingPrice == null;
+                    // Dim tiles the owner can't actually sell right now —
+                    // no price set, or nothing left on the shelf (DESIGN.md
+                    // POS/Sell: "out-of-stock tiles dimmed + red-pair
+                    // chip" — the chip itself comes from ProductListTile's
+                    // StockStatusChip).
+                    final outOfStock = stockStatusFor(
+                          quantity: product.quantity,
+                          threshold: product.lowStockThreshold,
+                        ) ==
+                        StockStatus.outOfStock;
+                    final disabled = product.sellingPrice == null || outOfStock;
                     return Opacity(
                       opacity: disabled ? 0.5 : 1,
                       child: ProductListTile(
@@ -136,7 +147,7 @@ class _SellScreenState extends ConsumerState<SellScreen> {
               children: [
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Text('Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text('Cart', style: AppTextStyles.title),
                 ),
                 Expanded(
                   child: cartLines.isEmpty
@@ -162,29 +173,39 @@ class _SellScreenState extends ConsumerState<SellScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Total'),
-                    MoneyText(totalCents, style: AppTextStyles.totalMedium),
-                  ],
+      // DESIGN.md POS/Sell: "Cart bar: dark slate strip with onDark total +
+      // emerald Proceed button." — the second committed dark element this
+      // screen note explicitly calls for, alongside the app bar band.
+      bottomNavigationBar: ColoredBox(
+        color: AppTokens.surfaceDark,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Total', style: AppTextStyles.caption.copyWith(color: AppTokens.onDark)),
+                      MoneyText(
+                        totalCents,
+                        style: AppTextStyles.moneySmall.copyWith(color: AppTokens.onDark),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: PrimaryButton(
-                  label: 'Proceed to Payment',
-                  onPressed: cartLines.isEmpty ? null : () => context.pushNamed('sale-payment'),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Proceed to Payment',
+                    onPressed: cartLines.isEmpty ? null : () => context.pushNamed('sale-payment'),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
