@@ -7,6 +7,12 @@ products and opening stock, record sales (cash or M-PESA), watch stock
 auto-reduce, log expenses, keep an eye on low-stock items, and close the day
 with a plain-language summary of what happened and why.
 
+## Demo
+
+[![DukaSmart demo](docs/dukasmart-promo.gif)](docs/dukasmart-promo.mp4)
+
+*Click the preview for the full-quality MP4 ([`docs/dukasmart-promo.mp4`](docs/dukasmart-promo.mp4)).*
+
 ## Screenshots
 
 | Dashboard | New Sale | Payment | Sale Complete |
