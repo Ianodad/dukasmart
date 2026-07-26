@@ -36,7 +36,7 @@ class SaleSuccessScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Sale items', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Text('Sale items', style: AppTextStyles.title),
                 const SizedBox(height: 12),
                 Flexible(
                   child: ListView.builder(
@@ -56,8 +56,8 @@ class SaleSuccessScreen extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Total', style: TextStyle(fontWeight: FontWeight.bold)),
-                    MoneyText(sale.sale.total, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Total', style: AppTextStyles.bodyStrong),
+                    MoneyText(sale.sale.total, style: AppTextStyles.moneySmall),
                   ],
                 ),
               ],
@@ -81,26 +81,34 @@ class SaleSuccessScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.check_circle, color: AppColors.success, size: 72),
+                const Center(child: _SuccessCheck()),
                 const SizedBox(height: 16),
-                MoneyText(sale.total, style: AppTextStyles.totalLarge),
+                Center(child: MoneyText(sale.total, style: AppTextStyles.moneyMedium)),
                 const SizedBox(height: 8),
-                Text(sale.paymentMethod.label, style: Theme.of(context).textTheme.titleMedium),
+                Center(child: Text(sale.paymentMethod.label, style: AppTextStyles.caption)),
                 if (sale.paymentMethod == PaymentMethod.cash) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Change given: '),
-                      MoneyText(sale.changeAmount),
-                    ],
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Column(
+                      children: [
+                        Text('CHANGE GIVEN', style: AppTextStyles.overline),
+                        const SizedBox(height: 4),
+                        MoneyText(
+                          sale.changeAmount,
+                          style: AppTextStyles.moneySmall.copyWith(color: AppTokens.emerald),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-                const SizedBox(height: 8),
-                Text(
-                  DateFormat('d MMM yyyy, h:mm a').format(sale.createdAt),
-                  style: Theme.of(context).textTheme.bodyMedium,
+                const SizedBox(height: 16),
+                Center(
+                  child: Text(
+                    DateFormat('d MMM yyyy, h:mm a').format(sale.createdAt),
+                    style: AppTextStyles.caption.copyWith(color: AppTokens.inkMuted),
+                  ),
                 ),
                 const SizedBox(height: 32),
                 PrimaryButton(
@@ -108,7 +116,7 @@ class SaleSuccessScreen extends ConsumerWidget {
                   onPressed: () => context.goNamed('sell'),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton(
+                FilledButton.tonal(
                   onPressed: () => context.goNamed('home'),
                   child: const Text('Return Home'),
                 ),
@@ -123,6 +131,45 @@ class SaleSuccessScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text('Failed to load sale: $error')),
+      ),
+    );
+  }
+}
+
+/// DESIGN.md Sale success note: "the one emerald-committed moment — emerald
+/// circle check" that reveals with an `AnimatedScale`-in once, ≤250ms
+/// (DESIGN.md Motion). Scales from 0 to 1 a single time on first build;
+/// later rebuilds of the same element (e.g. the provider re-emitting) don't
+/// replay it because [State] — and `_scale` — survive across them.
+class _SuccessCheck extends StatefulWidget {
+  const _SuccessCheck();
+
+  @override
+  State<_SuccessCheck> createState() => _SuccessCheckState();
+}
+
+class _SuccessCheckState extends State<_SuccessCheck> {
+  double _scale = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _scale = 1);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedScale(
+      scale: _scale,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      child: Container(
+        width: 88,
+        height: 88,
+        decoration: const BoxDecoration(color: AppTokens.emerald, shape: BoxShape.circle),
+        child: const Icon(Icons.check, color: AppTokens.onEmerald, size: 48),
       ),
     );
   }
