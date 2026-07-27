@@ -98,18 +98,6 @@ list — check it there rather than trusting this table if the two disagree.
 Nothing is transmitted at all when no key is compiled in. Use a scoped /
 expiring demo key for any live demo and revoke it afterward.
 
-**In progress, no UI yet:** receipt / notebook-page photo extraction —
-photographing a supplier receipt to restock, or a handwritten catalog
-page to create products — is planned but not built. The extraction
-schemas, the image capture/decode pipeline, and vision support in the
-Anthropic gateway are merged, but there is no screen for either feature —
-no camera flow for receipt or notebook extraction exists. (The barcode
-scanner on Add Product and New Sale is unrelated and does ship.) Once
-built, the photo
-would be sent to Anthropic for extraction; DukaSmart would not retain
-the photo or store it in the database, though the system photo picker
-may keep a temporary copy in the OS cache.
-
 **Known gap:** the Android release/profile manifest carries the
 `INTERNET` permission needed to reach the API from a real device build,
 but this has only been verified by static inspection of the manifest —
@@ -117,6 +105,34 @@ it has not been exercised end-to-end on an Android profile/release build
 in this environment (no device was available). Verify on-device before a
 real demo. The Chrome dev target does not exercise Android permissions at
 all.
+
+## What's next — the camera (in build, not shipped)
+
+The notebook does not disappear on day one, so the fastest way into the app
+is to photograph what the owner has already written. Two features are being
+built on top of the extraction plumbing:
+
+| Feature | What it will do |
+|---|---|
+| **Snap a supplier receipt** | Photograph the receipt; the lines come back as products and quantities to check, correct, and receive into stock in one confirm |
+| **Import the notebook** | Photograph a handwritten catalog page; names and prices become new products, instead of being typed one at a time |
+
+**Neither ships today, and this is the honest status.** What *is* merged and
+tested: the extraction schemas (`lib/core/ai/extraction_schemas.dart`), the
+image decode/resize/re-encode pipeline (`lib/core/capture/`), and vision
+support in the Anthropic gateway. What does not exist: either screen. There is
+no camera flow for receipt or notebook extraction. (The barcode scanner on Add
+Product and New Sale is a separate, shipping feature.)
+
+Accuracy has also not been measured yet. Whether the model can actually read a
+real Kenyan printed receipt — and, harder, real handwriting — is an open
+question being answered by a spike against real photos before either feature is
+built. Handwriting is the half most likely to fail, and notebook import will be
+dropped rather than shipped unreliable.
+
+When built, the photo would be sent to Anthropic for extraction. DukaSmart
+would not retain it or store it in the database, though the system photo picker
+may keep a temporary copy in the OS cache.
 
 ## Release build
 
