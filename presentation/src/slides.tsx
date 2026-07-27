@@ -316,8 +316,9 @@ export const S5Money: React.FC = () => {
             </div>
             <div style={{ marginTop: 20, fontFamily: lexend, fontSize: 27, fontWeight: 400, color: T.inkSecondary, lineHeight: 1.55 }}>
               Every shilling is stored as integer cents — no floating-point drift.
-              Sales, stock movements and metrics are written in one transaction, and
-              the close-day report is recomputed fresh, never cached stale.
+              A sale writes its line items, stock changes and movements in one
+              transaction. Closing the day computes the figures once and stores
+              them, so a closed day is a fixed record, not a moving total.
             </div>
           </Card>
         </Reveal>
@@ -405,7 +406,7 @@ export const S7Built: React.FC = () => (
           </div>
           <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 22 }}>
             {[
-              "Flutter + Drift (SQLite) — one codebase, local data only",
+              "Flutter + Drift (SQLite) — one codebase, local-first data",
               "Integer-cents money math, frozen data layer with DAO invariants",
               "269 tests: money math, close-day math, DAO invariants, the AI gateway, widgets",
               "Rule-based daily insight — deterministic, now the offline fallback",
@@ -426,7 +427,7 @@ export const S7Built: React.FC = () => (
           <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 22 }}>
             {[
               "No cloud sync, backend, or accounts — nothing to break offline",
-              "No live M-PESA API — payments recorded manually with a code",
+              "No live M-PESA API — payments recorded manually, code optional",
               "No receipt printing, refunds, or split payments",
               "No push notifications, no multi-branch",
             ].map((t) => (
@@ -483,8 +484,8 @@ export const S8Ai: React.FC = () => (
           </div>
           <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 22 }}>
             {[
-              "Opt-in at build time — no key means no AI surfaces and no network calls",
-              "Read-only — never writes to the database; money is computed by the app and quoted verbatim",
+              "Enabled at build time by whoever ships the app — no key means no AI surfaces and no network calls",
+              "Read-only — never writes to the database; money is computed by the app, and the model is told to quote it verbatim",
             ].map((t) => (
               <div key={t} style={{ fontFamily: lexend, fontSize: 31, fontWeight: 400, color: T.inkSecondary, display: "flex", alignItems: "center" }}>
                 <Dot color={T.emerald} />
@@ -497,7 +498,7 @@ export const S8Ai: React.FC = () => (
     </div>
     <Reveal delay={60} style={{ marginTop: 48 }}>
       <div style={{ fontFamily: lexend, fontSize: 32, fontWeight: 400, color: T.inkMuted }}>
-        Off by default. Read-only always. The owner decides.
+        Off unless deliberately built in. Read-only always.
       </div>
     </Reveal>
   </LightSlide>

@@ -1,8 +1,9 @@
 # DukaSmart
 
 DukaSmart is an Android inventory and sales app built for a single Kenyan kiosk
-owner — one owner, one kiosk, one phone, local data only ("Know your stock.
-Grow your business."). It covers the full daily workflow of a small duka: add
+owner — one owner, one kiosk, one phone, local-first data ("Know your stock.
+Grow your business."). Nothing leaves the device unless the optional AI
+features below are built in. It covers the full daily workflow of a small duka: add
 products and opening stock, record sales (cash or M-PESA), watch stock
 auto-reduce, log expenses, keep an eye on low-stock items, and close the day
 with a plain-language summary of what happened and why.
@@ -56,8 +57,9 @@ flutter run -d <device-id>
 ## AI features (optional, online)
 
 DukaSmart's AI features — "Ask your duka" natural-language Q&A and the AI
-daily-report insight — are opt-in features that activate only when an
-Anthropic API key is provided at build time:
+daily-report insight — activate only when an Anthropic API key is compiled
+into the build. This is a decision made by whoever builds the app, not a
+setting the shop owner can toggle at runtime; there is no in-app switch:
 
 ```
 flutter run -d <device-id> --dart-define=ANTHROPIC_API_KEY=sk-ant-...
@@ -66,25 +68,34 @@ flutter run -d <device-id> --dart-define=ANTHROPIC_API_KEY=sk-ant-...
 Without the define, the app is the unchanged offline app: no AI surfaces
 render and no network calls are made. The key is baked into that build
 only — do not distribute an APK built with a real key. All AI tools are
-read-only; the AI never writes to the database; money figures shown by
-the AI are computed locally by the app and quoted verbatim. The daily
+read-only; the AI never writes to the database. Money figures are computed
+locally by the app and passed to the model, which is instructed to quote
+them verbatim — the app does not re-validate the wording it gets back, so
+treat AI prose as a summary and the app's own screens as authoritative. The daily
 report also keeps its original rule-based, deterministic insight
 generator — it is not gone, it is the offline fallback used whenever no
 key is provided or the device has no connectivity.
 
-**Privacy:** when AI features are active, user questions, the conversation
-thread, aggregated tool results, and the daily-close snapshot are sent to
-Anthropic's API. Raw database rows never leave the device — only the
-aggregated JSON produced by the read-only tools and snapshot builder.
-Use a scoped / expiring demo key for any live demo and revoke it
-afterward.
+**Privacy:** when AI features are active, the following are sent to
+Anthropic's API — user questions, the conversation thread, the results of
+the read-only tools, and the daily-close snapshot. Be precise about what
+"tool results" means: it is not only aggregates. `stockLevels` sends one
+row per product (name, quantity, unit, low-stock threshold), and the
+daily-close tool sends the stored close figures in full (cash and M-PESA
+sales, expenses, COGS, gross profit, net result, expected and actual cash).
+Sales and expenses go as reason/category totals rather than individual
+transactions. There is no customer data in DukaSmart to send. Nothing is
+transmitted at all when no key is compiled in. Use a scoped / expiring demo
+key for any live demo and revoke it afterward.
 
 **In progress, no UI yet:** receipt / notebook-page photo extraction —
 photographing a supplier receipt to restock, or a handwritten catalog
 page to create products — is planned but not built. The extraction
 schemas, the image capture/decode pipeline, and vision support in the
-Anthropic gateway are merged, but there is no screen for either feature
-and nothing a user can do with a camera today. Once built, the photo
+Anthropic gateway are merged, but there is no screen for either feature —
+no camera flow for receipt or notebook extraction exists. (The barcode
+scanner on Add Product and New Sale is unrelated and does ship.) Once
+built, the photo
 would be sent to Anthropic for extraction; DukaSmart would not retain
 the photo or store it in the database, though the system photo picker
 may keep a temporary copy in the OS cache.
