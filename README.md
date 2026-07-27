@@ -106,11 +106,11 @@ in this environment (no device was available). Verify on-device before a
 real demo. The Chrome dev target does not exercise Android permissions at
 all.
 
-## What's next — the camera (in build, not shipped)
+## What's next — the camera (planned, not shipped)
 
 The notebook does not disappear on day one, so the fastest way into the app
-is to photograph what the owner has already written. Two features are being
-built on top of the extraction plumbing:
+is to photograph what the owner has already written. Two features are planned
+on top of the extraction plumbing:
 
 | Feature | What it will do |
 |---|---|
@@ -124,11 +124,13 @@ support in the Anthropic gateway. What does not exist: either screen. There is
 no camera flow for receipt or notebook extraction. (The barcode scanner on Add
 Product and New Sale is a separate, shipping feature.)
 
-Accuracy has also not been measured yet. Whether the model can actually read a
-real Kenyan printed receipt — and, harder, real handwriting — is an open
-question being answered by a spike against real photos before either feature is
-built. Handwriting is the half most likely to fail, and notebook import will be
-dropped rather than shipped unreliable.
+Neither is in flight. Both are blocked on an accuracy gate that has not run
+yet: whether the model can actually read a real Kenyan printed receipt — and,
+harder, real handwriting — is being answered by a spike against real photos
+first. Handwriting is the half most likely to fail. If it does, the gate records
+that result rather than quietly substituting a bigger model, and whether to
+defer notebook import, pay for a stronger model, or drop it is a deliberate
+call made on the measured numbers.
 
 When built, the photo would be sent to Anthropic for extraction. DukaSmart
 would not retain it or store it in the database, though the system photo picker

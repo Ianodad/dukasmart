@@ -553,7 +553,7 @@ export const S9Ocr: React.FC = () => (
           display: "inline-block",
         }}
       >
-        In build, not shipped — the extraction pipeline is written and tested; the
+        Planned, not shipped — the extraction pipeline is written and tested; the
         screens are not. Accuracy on real Kenyan receipts and real handwriting
         must still be measured before either ships.
       </div>
