@@ -61,6 +61,19 @@ Full planning + execution record: `.wargames/LEDGER.md`.
 - [x] **Branch pushed** to `origin/feature/ai-capabilities` @ `dc16323`.
 - [x] 5 synthetic test images generated (gpt-image-2) with ground-truth tables
       for smoke-testing — `tool/spike_samples/synthetic/`.
+- [x] **Public-facing docs corrected (`4de9b9d`, `c55769a`, `1e6202a`, 2026-07-27).**
+      README contradicted itself — it documented the AI features and also listed
+      "An AI assistant … no external AI" as out of scope. Deck had the same bug
+      plus a stale test count (107 vs 269). Fixed both; added an AI slide (S8Ai,
+      deck now 9 slides); `presentation/` is now tracked (was entirely
+      untracked); real READMEs replaced Remotion boilerplate;
+      `docs/screenshots/CAPTURE.md` pins the 860×1864 geometry the promo's
+      phone frame depends on. **Three Codex rounds** (REVISE → REVISE → one Low
+      folded); every finding was an overclaim — "only aggregated JSON leaves the
+      device", "money quoted verbatim", "the owner decides", and a slide saying
+      the close-day report is "recomputed fresh, never cached stale" when the
+      stored row is deliberately authoritative. Verified by orchestrator: tsc
+      clean, slides 5/7/8/9 rendered and inspected, analyze clean.
 - [x] **Sample-photo gitignore settled (`bd752ad`, 2026-07-27).** Every image
       under `tool/spike_samples/` is ignored; the synthetic README (ground-truth
       tables + the two traps) is now tracked. Settled *before* the real photos
@@ -149,10 +162,21 @@ Full planning + execution record: `.wargames/LEDGER.md`.
   `YYYY-MM-DD`" check non-strict.
 
 ## Git State
-- Branch **`feature/ai-capabilities`** @ **`bd752ad`**, tracking
-  `origin/feature/ai-capabilities`. **1 ahead of origin — `bd752ad` (the
-  gitignore commit) is NOT pushed.** Everything through `039d85a` is pushed and
-  byte-matches the remote. Push is a separate explicit go.
+- Branch **`feature/ai-capabilities`** @ **`1e6202a`**, tracking
+  `origin/feature/ai-capabilities`. **5 ahead of origin — NOT pushed**
+  (`bd752ad`, `3bd5ad3`, `4de9b9d`, `c55769a`, `1e6202a`). Everything through
+  `039d85a` is pushed and byte-matches the remote. Push is a separate explicit go.
+- **Ian owes 2 screenshots** before the promo can gain an AI beat: the Ask
+  screen mid-answer and the daily-report AI card, both at **860×1864**
+  (430×932 @ DPR 2 — the promo's phone frame is `phoneW = 430`). Recipe in
+  `docs/screenshots/CAPTURE.md`. Copy into BOTH `docs/screenshots/` and
+  `remotion/public/screens/` — they are byte-identical duplicates. Adding the
+  beats is then ~2 lines in `BEATS` in `remotion/src/DukaPromo.tsx`.
+- Fixed `~/.claude-second-account/settings.json`: it had `Write(~/SecondBrain/**)`,
+  which is not a valid rule form (only `Edit(path)` matches file-writing tools),
+  so the account refused to boot and **every** dispatch failed. Now `Edit(...)`.
+  Its default model is still `claude-fable-5[1m]` — harmless because the scripts
+  pass `--model claude-sonnet-5`, but a bare `claude` call there spends Fable.
 - Gates re-verified from scratch on resume (2026-07-27, orchestrator-run, not
   taken from the previous session's word): `flutter analyze` → No issues found;
   `flutter test` → **269 passed**.
