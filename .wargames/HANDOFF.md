@@ -46,11 +46,24 @@
 - [x] Empirical probe confirming L3a's async assertion is substantive.
 - [x] All four gates re-run by the orchestrator after the fix round.
 
+## Spike status (2026-07-27)
+- **Mission 01 MERGED** into `feature/ai-capabilities` (`17e07ff`), phase
+  branch deleted.
+- **First real-API run of the spike FAILED on both buttons.** Root cause was
+  configuration, not the model or the plumbing — `AiConfig.apiKey` is
+  `String.fromEnvironment`, which yields `''` (not an error) when the
+  dart-define is missing or lands on the wrong entrypoint, and A6.3 collapsed
+  the resulting 401 into the same opaque message as every other failure.
+- **Fixed in `c8a808c`:** the spike now shows key presence + length and
+  refuses to call the API without one; the 7 silent `extractStructured`
+  failure branches each log their name in debug builds (no key, no bodies,
+  no extracted prices). Behavior unchanged; 269 tests still green.
+- **Ian confirmed the spike now works.** The plumbing is proven end to end
+  against the real API. The gate itself is still unfilled.
+
 ## Remaining
-- [ ] **Ian's merge go** for `phase/01-ai-vision-extraction` →
-      `feature/ai-capabilities` (`--no-ff`, delete phase branch after).
-      **Push is a SEPARATE go** — `feature/ai-capabilities` has still never
-      been pushed.
+- [ ] **Push `feature/ai-capabilities`** — still never pushed, now 4 commits
+      deep (`328d838`, `ec6ff2f`, `17e07ff`, `c8a808c`). Needs Ian's go.
 - [ ] **Ian runs the M10 spike.** Needs a real key + **≥5 printed receipts and
       ≥5 handwritten notebook pages**. This is the fork in the road: it decides
       whether 02 and 03 are worth building at all.
