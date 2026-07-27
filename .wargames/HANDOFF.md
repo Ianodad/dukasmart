@@ -172,10 +172,13 @@ Full planning + execution record: `.wargames/LEDGER.md`.
   `YYYY-MM-DD`" check non-strict.
 
 ## Git State
-- Branch **`feature/ai-capabilities`** @ **`1e6202a`**, tracking
-  `origin/feature/ai-capabilities`. **5 ahead of origin — NOT pushed**
-  (`bd752ad`, `3bd5ad3`, `4de9b9d`, `c55769a`, `1e6202a`). Everything through
-  `039d85a` is pushed and byte-matches the remote. Push is a separate explicit go.
+- Branch **`feature/ai-capabilities`** @ **`fa54ab6`** — **PUSHED** (Ian's
+  explicit go, 2026-07-27). Remote tip and tree hash both verified identical to
+  local (`49f33b5…`). `039d85a..fa54ab6` = 12 commits: spike gitignore, the
+  documentation correction pass, the deck AI + OCR slides, and the promo AI card.
+- **`main` (80c0e4b) and `development` (6fb2cd3) deliberately untouched.** Ian
+  chose push-only; the merge decision stays open until the M10 gate resolves.
+  `main` is still the v0.1.0 MVP and does not even carry AI v1.
 - **Ian owes 2 screenshots** before the promo can gain an AI beat: the Ask
   screen mid-answer and the daily-report AI card, both at **860×1864**
   (430×932 @ DPR 2 — the promo's phone frame is `phoneW = 430`). Recipe in
