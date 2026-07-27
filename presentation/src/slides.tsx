@@ -519,11 +519,11 @@ export const S9Ocr: React.FC = () => (
       {[
         {
           title: "Snap a supplier receipt",
-          body: "Photograph the delivery note. Lines come back as products and quantities to check, correct, and receive into stock in one confirm.",
+          body: "Photograph the supplier receipt. Lines come back as products and quantities to check, correct, and receive into stock in one confirm.",
         },
         {
           title: "Import the notebook",
-          body: "Photograph a handwritten catalog page. Names and prices become real products, so the shop starts with its own list, not a demo one.",
+          body: "Photograph a handwritten catalog page. Names and prices become new products in seconds, instead of being typed in one at a time.",
         },
       ].map((c, i) => (
         <Reveal key={c.title} delay={24 + i * 14} style={{ flex: 1 }}>
@@ -554,8 +554,8 @@ export const S9Ocr: React.FC = () => (
         }}
       >
         In build, not shipped — the extraction pipeline is written and tested; the
-        screens are not. Accuracy on real Kenyan receipts and real handwriting is
-        being measured before either ships.
+        screens are not. Accuracy on real Kenyan receipts and real handwriting
+        must still be measured before either ships.
       </div>
     </Reveal>
   </LightSlide>
