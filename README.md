@@ -76,17 +76,27 @@ report also keeps its original rule-based, deterministic insight
 generator — it is not gone, it is the offline fallback used whenever no
 key is provided or the device has no connectivity.
 
-**Privacy:** when AI features are active, the following are sent to
-Anthropic's API — user questions, the conversation thread, the results of
-the read-only tools, and the daily-close snapshot. Be precise about what
-"tool results" means: it is not only aggregates. `stockLevels` sends one
-row per product (name, quantity, unit, low-stock threshold), and the
-daily-close tool sends the stored close figures in full (cash and M-PESA
-sales, expenses, COGS, gross profit, net result, expected and actual cash).
-Sales and expenses go as reason/category totals rather than individual
-transactions. There is no customer data in DukaSmart to send. Nothing is
-transmitted at all when no key is compiled in. Use a scoped / expiring demo
-key for any live demo and revoke it afterward.
+**Privacy:** when AI features are active, these are sent to Anthropic's
+API — the user's question, the conversation thread, the results of the
+read-only tools, and the daily-close snapshot.
+
+"Tool results" is not only aggregates, so be specific. The five tools send:
+
+| Tool | What goes over the wire |
+|---|---|
+| `salesSummary` | period totals — sales, cash/M-PESA split, counts |
+| `topProducts` | per-product rows: name, quantity sold, revenue |
+| `expensesSummary` | totals grouped by category and by free-text reason |
+| `stockLevels` | a product count, plus one row per product: name, quantity, unit, low-stock threshold, is-low flag |
+| `dailyCloses` | the stored close rows in full — date, sales, expenses, COGS, gross profit, net result, expected/actual cash, difference |
+
+So individual product names and stock positions do leave the device;
+individual sale and expense transactions do not. DukaSmart holds no customer
+data, so none is sent. `lib/core/ai/ai_query_service.dart` is the definitive
+list — check it there rather than trusting this table if the two disagree.
+
+Nothing is transmitted at all when no key is compiled in. Use a scoped /
+expiring demo key for any live demo and revoke it afterward.
 
 **In progress, no UI yet:** receipt / notebook-page photo extraction —
 photographing a supplier receipt to restock, or a handwritten catalog

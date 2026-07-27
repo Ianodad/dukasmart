@@ -317,8 +317,9 @@ export const S5Money: React.FC = () => {
             <div style={{ marginTop: 20, fontFamily: lexend, fontSize: 27, fontWeight: 400, color: T.inkSecondary, lineHeight: 1.55 }}>
               Every shilling is stored as integer cents — no floating-point drift.
               A sale writes its line items, stock changes and movements in one
-              transaction. Closing the day computes the figures once and stores
-              them, so a closed day is a fixed record, not a moving total.
+              transaction. Closing the day computes the figures and stores them,
+              so a sale recorded afterwards cannot quietly move a closed day —
+              only deliberately re-closing it recomputes the record.
             </div>
           </Card>
         </Reveal>
