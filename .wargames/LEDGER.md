@@ -149,6 +149,53 @@ One entry per mission. Draft location, point-by-point self-grade against
   is not on the critical path, and a poor handwriting result may change the
   mission anyway. **Re-verify at dispatch time, after the spike.**
 
+## Execution arc
+
+### 01-ai-vision-extraction — BUILT 2026-07-27, branch `phase/01-ai-vision-extraction`
+- Planning artifacts committed first (`328d838`), then the phase branch cut from
+  `feature/ai-capabilities`.
+- **Orchestrator-verified baseline before dispatch:** analyze clean, **217 tests**.
+  Not taken from the handoff — re-run.
+- **Round 1 (second-account Sonnet executor, blind from the mission file):**
+  M0–M9 executed, M10 artifacts built (harness + samples README + unfilled gate
+  template). Result: analyze clean, **264 tests** (+47), `build web` OK, zero
+  `dart:io` imports. All four gates re-run and confirmed by the orchestrator,
+  not accepted from the executor's report.
+- **Codex review (gpt-5.6-sol xhigh) — VERDICT REVISE, 4 findings:**
+  - **M1** the photo picker sat OUTSIDE the error boundary — a denied camera
+    permission threw `PlatformException` out of `capture()` instead of
+    returning a `CaptureResult`, leaving the spike harness's buttons
+    permanently dead.
+  - **M2** "strict `YYYY-MM-DD`" was not strict: Dart's `DateTime.parse`
+    accepts 4–6 digit years and the round-trip check preserves them, so
+    `12345-01-01` passed as a valid date.
+  - **L3** two M8 proofs the plan REQUIRED were incomplete — the
+    "independent timeouts" test never called `ask()` (proving only half its
+    own claim), and the malformed-`extractInput` test on `FakeAiGateway`
+    (the round-2 F1 boundary) did not exist at all.
+  - **L4** `_ThrowingAiGateway.extractStructured` threw `UnimplementedError`
+    instead of mirroring its `ask()`'s `StateError('boom')`.
+- **All 4 folded** (Lows included — they guarded the exact boundary an earlier
+  review round had already caught once).
+- **Logged orchestrator divergence (M1's fix):** picker failures fold into
+  `CaptureFailure.undecodable` rather than gaining a new `unavailable` enum
+  case. `undecodable` is a poor label for "permission denied", but the
+  two-value `CaptureFailure` enum is the surface missions **02 and 03 were
+  already written and APPROVED against** — widening it would silently
+  invalidate two reviewed plans. Rationale is commented at the catch site.
+  **v2.1 item: dedicated `unavailable` case + proper message.**
+- **Round 2 (Codex delta) — VERDICT APPROVED.** Confirmed each fix at source
+  plus a mutation-sensitivity pass. Noted honestly that L4's fix is not
+  covered by any test (nothing calls that helper) — correct, but unproven.
+- **Orchestrator empirical check:** ran a throwaway probe proving
+  `expect(() => asyncFn(), throwsA(...))` genuinely FAILS when the async
+  function does not throw ("returned a Future that emitted `<null>`"), so
+  L3a's new assertion is substantive rather than vacuous. Probe deleted.
+- **Final verified state: analyze clean, 269 tests green, `build web` OK.**
+- **Still unproven, by design:** every one of those 269 tests fakes the
+  extraction result. Nothing here shows a model can read a real receipt or
+  real handwriting. That is exactly what M10 exists for.
+
 ## Lesson recorded (for future planning loops)
 Three separate defects traced back to ONE source: the concurrency change
 adopted from the Fable advisor pass and applied quickly on top of a reviewed

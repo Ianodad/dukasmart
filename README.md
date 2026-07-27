@@ -76,6 +76,11 @@ aggregated JSON produced by the read-only tools and snapshot builder.
 Use a scoped / expiring demo key for any live demo and revoke it
 afterward.
 
+When you snap a receipt or notebook page, the photo is sent to Anthropic
+for extraction. DukaSmart does not retain the photo and never stores it
+in the database; the system photo picker may keep a temporary copy in
+the OS cache.
+
 **Known gap:** the Android release/profile manifest carries the
 `INTERNET` permission needed to reach the API from a real device build,
 but this has only been verified by static inspection of the manifest —
