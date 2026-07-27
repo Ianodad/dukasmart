@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dukasmart/core/ai/ai_gateway.dart';
+import 'package:dukasmart/core/ai/ai_image.dart';
 import 'package:dukasmart/core/ai/ai_providers.dart';
 import 'package:dukasmart/core/ai/ai_query_service.dart';
 import 'package:dukasmart/core/ai/duka_tools.dart';
@@ -163,6 +164,15 @@ class _ThrowingAiGateway implements AiGateway {
   Future<String> generateInsight(ShopSnapshot snapshot) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<T> extractStructured<T>({
+    required String instruction,
+    required List<AiImage> images,
+    required ExtractionSpec<T> spec,
+  }) {
+    throw StateError('boom');
+  }
 }
 
 /// An [AiGateway] whose `ask` call stays pending until [completer]
@@ -179,6 +189,15 @@ class _CompleterAiGateway implements AiGateway {
 
   @override
   Future<String> generateInsight(ShopSnapshot snapshot) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<T> extractStructured<T>({
+    required String instruction,
+    required List<AiImage> images,
+    required ExtractionSpec<T> spec,
+  }) {
     throw UnimplementedError();
   }
 }

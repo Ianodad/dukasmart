@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'ai_config.dart';
 import 'ai_gateway.dart';
+import 'ai_image.dart';
 import 'duka_tools.dart';
 import 'snapshot_builder.dart';
 
@@ -18,20 +19,31 @@ class AnthropicGateway implements AiGateway {
     required http.Client client,
     required this.apiKey,
     this.model = AiConfig.model,
+    this.extractionModel = AiConfig.extractionModel,
     this.endpoint = AiConfig.endpoint,
     this.timeout = _defaultTimeout,
+    this.extractionTimeout = _defaultExtractionTimeout,
   }) : _client = client;
 
   final http.Client _client;
   final String apiKey;
   final String model;
+
+  /// Drives [extractStructured] only — never [ask]/[generateInsight].
+  final String extractionModel;
   final String endpoint;
 
   /// A6.4: injectable per-request timeout, defaulting to the spec value
   /// (15s) rather than the plan's original hardcoded 30s.
   final Duration timeout;
 
+  /// Injectable per-call timeout for [extractStructured] — vision calls
+  /// run slower than text-only calls, so this defaults higher than
+  /// [timeout] rather than sharing it.
+  final Duration extractionTimeout;
+
   static const Duration _defaultTimeout = Duration(seconds: 15);
+  static const Duration _defaultExtractionTimeout = Duration(seconds: 60);
 
   /// Max tool-use rounds actually EXECUTED per question (A6.2). One
   /// initial request plus up to this many executed tool rounds, plus one
@@ -203,6 +215,96 @@ Never mention numbers that are not in the snapshot.''';
     return text;
   }
 
+  static const String _extractionSystemPrompt = '''
+You extract structured data from photos for a Kenyan duka bookkeeping app.
+Money values are integer cents. Omit lines you cannot read — never invent
+data.''';
+
+  @override
+  Future<T> extractStructured<T>({
+    required String instruction,
+    required List<AiImage> images,
+    required ExtractionSpec<T> spec,
+  }) async {
+    // Defense in depth: AiImage's own constructor already enforces this
+    // cap, but re-assert here at the network boundary rather than trust
+    // every future caller to only ever construct via that constructor.
+    for (final image in images) {
+      if (image.bytes.length > AiImage.maxRawBytes) {
+        throw const AiUnavailableError(AiFailureKind.error);
+      }
+    }
+
+    final response = await _post(
+      {
+        'model': extractionModel,
+        'max_tokens': 4096,
+        'system': _extractionSystemPrompt,
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              for (final image in images)
+                {
+                  'type': 'image',
+                  'source': {
+                    'type': 'base64',
+                    'media_type': image.mediaType,
+                    'data': base64Encode(image.bytes),
+                  },
+                },
+              {'type': 'text', 'text': instruction},
+            ],
+          },
+        ],
+        'tools': [
+          {
+            'name': spec.toolName,
+            'description': spec.description,
+            'input_schema': spec.inputSchema,
+          },
+        ],
+        'tool_choice': {'type': 'tool', 'name': spec.toolName},
+      },
+      timeout: extractionTimeout,
+    );
+
+    // A6.1: refusal is checked FIRST, before touching content — same
+    // ordering as ask().
+    final stopReason = response['stop_reason'];
+    if (stopReason == 'refusal') {
+      throw const AiUnavailableError(AiFailureKind.error);
+    }
+
+    if (stopReason != 'tool_use') {
+      // tool_choice is forced; anything but tool_use (end_turn,
+      // max_tokens, stop_sequence, null, or any other value) is a
+      // protocol violation — never "best-effort" parsed.
+      throw const AiUnavailableError(AiFailureKind.error);
+    }
+
+    final toolUseBlocks = _contentBlocks(response)
+        .where((b) => b['type'] == 'tool_use')
+        .toList();
+    // Exactly one tool_use block matching spec.toolName with a Map input
+    // is acceptable — zero, multiple, wrong-name, or non-map input all
+    // fail loudly rather than silently picking "the first match".
+    if (toolUseBlocks.length != 1) {
+      throw const AiUnavailableError(AiFailureKind.error);
+    }
+    final block = toolUseBlocks.single;
+    if (block['name'] != spec.toolName || block['input'] is! Map) {
+      throw const AiUnavailableError(AiFailureKind.error);
+    }
+    final input = Map<String, Object?>.from(block['input'] as Map);
+
+    try {
+      return spec.parse(input);
+    } catch (_) {
+      throw const AiUnavailableError(AiFailureKind.error);
+    }
+  }
+
   static String _joinText(List<Map<String, dynamic>> content) => content
       .where((b) => b['type'] == 'text')
       .map((b) => b['text'] is String ? b['text'] as String : '')
@@ -222,7 +324,10 @@ Never mention numbers that are not in the snapshot.''';
     ];
   }
 
-  Future<Map<String, dynamic>> _post(Map<String, Object?> body) async {
+  Future<Map<String, dynamic>> _post(
+    Map<String, Object?> body, {
+    Duration? timeout,
+  }) async {
     final http.Response response;
     try {
       response = await _client
@@ -242,7 +347,7 @@ Never mention numbers that are not in the snapshot.''';
             },
             body: jsonEncode(body),
           )
-          .timeout(timeout);
+          .timeout(timeout ?? this.timeout);
     } on TimeoutException {
       throw const AiUnavailableError(AiFailureKind.offline);
     } catch (e) {
