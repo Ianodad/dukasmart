@@ -65,9 +65,11 @@ Full planning + execution record: `.wargames/LEDGER.md`.
       README contradicted itself — it documented the AI features and also listed
       "An AI assistant … no external AI" as out of scope. Deck had the same bug
       plus a stale test count (107 vs 269). Fixed both; added an AI slide (S8Ai,
-      deck now 9 slides); `presentation/` is now tracked (was entirely
+      deck now 10 slides); `presentation/` is now tracked (was entirely
       untracked); real READMEs replaced Remotion boilerplate;
-      `docs/screenshots/CAPTURE.md` pins the 860×1864 geometry the promo's
+      a roadmap slide for the camera/OCR work (S9Ocr) went on at Ian's request —
+      labelled **in build, not shipped**, since neither screen exists and the
+      M10 gate has not run; `docs/screenshots/CAPTURE.md` pins the 860×1864 geometry the promo's
       phone frame depends on. **Three Codex rounds** (REVISE → REVISE → one Low
       folded); every finding was an overclaim — "only aggregated JSON leaves the
       device", "money quoted verbatim", "the owner decides", and a slide saying
