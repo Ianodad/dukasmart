@@ -56,7 +56,7 @@ flutter run -d <device-id>
 ## AI features (optional, online)
 
 DukaSmart's AI features — "Ask your duka" natural-language Q&A and the AI
-daily-report insight — are demo features that activate only when an
+daily-report insight — are opt-in features that activate only when an
 Anthropic API key is provided at build time:
 
 ```
@@ -66,8 +66,11 @@ flutter run -d <device-id> --dart-define=ANTHROPIC_API_KEY=sk-ant-...
 Without the define, the app is the unchanged offline app: no AI surfaces
 render and no network calls are made. The key is baked into that build
 only — do not distribute an APK built with a real key. All AI tools are
-read-only; money figures shown by the AI are computed locally by the app
-and quoted verbatim.
+read-only; the AI never writes to the database; money figures shown by
+the AI are computed locally by the app and quoted verbatim. The daily
+report also keeps its original rule-based, deterministic insight
+generator — it is not gone, it is the offline fallback used whenever no
+key is provided or the device has no connectivity.
 
 **Privacy:** when AI features are active, user questions, the conversation
 thread, aggregated tool results, and the daily-close snapshot are sent to
@@ -76,10 +79,15 @@ aggregated JSON produced by the read-only tools and snapshot builder.
 Use a scoped / expiring demo key for any live demo and revoke it
 afterward.
 
-When you snap a receipt or notebook page, the photo is sent to Anthropic
-for extraction. DukaSmart does not retain the photo and never stores it
-in the database; the system photo picker may keep a temporary copy in
-the OS cache.
+**In progress, no UI yet:** receipt / notebook-page photo extraction —
+photographing a supplier receipt to restock, or a handwritten catalog
+page to create products — is planned but not built. The extraction
+schemas, the image capture/decode pipeline, and vision support in the
+Anthropic gateway are merged, but there is no screen for either feature
+and nothing a user can do with a camera today. Once built, the photo
+would be sent to Anthropic for extraction; DukaSmart would not retain
+the photo or store it in the database, though the system photo picker
+may keep a temporary copy in the OS cache.
 
 **Known gap:** the Android release/profile manifest carries the
 `INTERNET` permission needed to reach the API from a real device build,
@@ -102,6 +110,10 @@ The APK is written to `build/app/outputs/flutter-apk/app-release.apk`.
 ```
 flutter test
 ```
+
+269 tests, all passing. `flutter analyze` reports no issues. This includes
+widget tests (dashboard, ask, add_stock, close_day, record_expense, and
+daily_report screens) alongside the unit tests.
 
 Quirk: the Drift code generator needs the JIT VM, not AOT-snapshot mode —
 if `dart run build_runner build` fails or hangs on this machine, re-run it
@@ -129,7 +141,9 @@ cents internally.)
 
 ## What's explicitly out of scope (MVP)
 
-DukaSmart is a deliberately small, one-day MVP. The following are **not**
+DukaSmart is a deliberately small, one-day MVP. This list describes that
+original one-day baseline; the optional AI layer described above was added
+afterward and is documented there, not here. The following are **not**
 included by design:
 
 - Auth/login, employee roles
@@ -139,8 +153,6 @@ included by design:
 - Daraja / M-PESA API integration (M-PESA payments are recorded manually —
   amount + optional transaction code — with no live API call)
 - Receipt printing (including Bluetooth printing)
-- An AI assistant (the daily-report insight is rule-based, deterministic text
-  — no external AI)
 - Push notifications
 - Data export
 - Refunds or discounts
@@ -155,12 +167,16 @@ included by design:
 lib/
   app/                App shell, router (GoRouter), theme
   core/
+    ai/                Anthropic gateway, tool definitions, extraction
+                       schemas, snapshot builder
+    capture/           Image decode / resize / re-encode for vision calls
     database/         Drift schema, DAOs, enums, errors (frozen data layer)
       daos/
     formatting/        Money parsing/formatting (int-cents everywhere)
     models/            Shared DTOs (e.g. DailyMetrics, ClosedDayReport)
     widgets/           Shared widgets (SummaryCard, MoneyText, etc.)
   features/
+    assistant/         Ask your duka screen + controller
     dashboard/         Home dashboard
     products/          Product list, Add Product, common-products catalog
     inventory/         Add Stock, Low Stock
@@ -171,8 +187,9 @@ lib/
 docs/
   specs/               Requirements + design decisions (binding contracts)
   plans/               Build plan + handoff notes
-test/                  Unit tests (money math, DAO invariants, close-day math,
-                       insight generator) — no widget-test suite by design
+test/                  Unit and widget tests (money math, DAO invariants,
+                       close-day math, insight generator, dashboard, ask,
+                       add_stock, close_day, record_expense, daily_report)
 ```
 
 
