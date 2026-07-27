@@ -107,6 +107,14 @@ Full planning + execution record: `.wargames/LEDGER.md`.
       wasted. Wait for the gate.
 
 ## Open Flags
+0. **UNVERIFIED CLAIM now public: Swahili Q&A.** The promo video and deck slide
+   8 both say questions work "in English or Swahili". The gateway does instruct
+   the model to reply in the user's language, and a test covers UTF-8 handling
+   against a mocked response — but nobody has asked a Swahili question with a
+   real key. Codex flagged it Low; shipped deliberately. **Ian: test this during
+   the screenshot trip.** If it fails, fix is one line in `DukaPromo.tsx`
+   (`AiCard`) + one in `slides.tsx` (S8Ai), then re-render the promo.
+
 1. **Nothing proves Haiku can read a real receipt yet.** All 269 tests fake
    the extraction result — by design. The spike now proves the *plumbing*
    works end to end against the live API; it does not prove *model quality*.
