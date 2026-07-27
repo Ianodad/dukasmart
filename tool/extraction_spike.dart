@@ -44,6 +44,17 @@ class _ExtractionSpikeScreenState extends State<_ExtractionSpikeScreen> {
     required ExtractionSpec<T> spec,
     required String Function(T) describe,
   }) async {
+    if (AiConfig.apiKey.isEmpty) {
+      setState(() {
+        _result = 'API key: MISSING — the spike sent no request.\n\n'
+            'Re-run with:\n'
+            'flutter run -d chrome tool/extraction_spike.dart '
+            '--dart-define=ANTHROPIC_API_KEY=sk-ant-... '
+            '--dart-define=AI_EXTRACTION_MODEL=claude-haiku-4-5-20251001';
+      });
+      return;
+    }
+
     setState(() {
       _busy = true;
       _result = 'Picking a $label photo...';
@@ -142,6 +153,13 @@ class _ExtractionSpikeScreenState extends State<_ExtractionSpikeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            AiConfig.apiKey.isEmpty
+                ? const Text(
+                    'API key: MISSING — pass '
+                    '--dart-define=ANTHROPIC_API_KEY=sk-ant-...',
+                    style: TextStyle(color: Colors.red),
+                  )
+                : Text('API key: present (${AiConfig.apiKey.length} chars)'),
             Text('Extraction model: ${AiConfig.extractionModel}'),
             const SizedBox(height: 16),
             SizedBox(

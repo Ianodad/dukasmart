@@ -231,6 +231,10 @@ data.''';
     // every future caller to only ever construct via that constructor.
     for (final image in images) {
       if (image.bytes.length > AiImage.maxRawBytes) {
+        if (kDebugMode) {
+          debugPrint('AnthropicGateway.extractStructured: image over cap '
+              '(${image.bytes.length} bytes)');
+        }
         throw const AiUnavailableError(AiFailureKind.error);
       }
     }
@@ -273,6 +277,9 @@ data.''';
     // ordering as ask().
     final stopReason = response['stop_reason'];
     if (stopReason == 'refusal') {
+      if (kDebugMode) {
+        debugPrint('AnthropicGateway.extractStructured: refusal');
+      }
       throw const AiUnavailableError(AiFailureKind.error);
     }
 
@@ -280,6 +287,10 @@ data.''';
       // tool_choice is forced; anything but tool_use (end_turn,
       // max_tokens, stop_sequence, null, or any other value) is a
       // protocol violation — never "best-effort" parsed.
+      if (kDebugMode) {
+        debugPrint('AnthropicGateway.extractStructured: unexpected '
+            'stop_reason=$stopReason');
+      }
       throw const AiUnavailableError(AiFailureKind.error);
     }
 
@@ -290,17 +301,36 @@ data.''';
     // is acceptable — zero, multiple, wrong-name, or non-map input all
     // fail loudly rather than silently picking "the first match".
     if (toolUseBlocks.length != 1) {
+      if (kDebugMode) {
+        debugPrint('AnthropicGateway.extractStructured: expected 1 '
+            'tool_use block, got ${toolUseBlocks.length}');
+      }
       throw const AiUnavailableError(AiFailureKind.error);
     }
     final block = toolUseBlocks.single;
-    if (block['name'] != spec.toolName || block['input'] is! Map) {
+    if (block['name'] != spec.toolName) {
+      if (kDebugMode) {
+        debugPrint('AnthropicGateway.extractStructured: tool name '
+            'mismatch (got ${block['name']}, want ${spec.toolName})');
+      }
+      throw const AiUnavailableError(AiFailureKind.error);
+    }
+    if (block['input'] is! Map) {
+      if (kDebugMode) {
+        debugPrint(
+            'AnthropicGateway.extractStructured: tool_use input is not a Map');
+      }
       throw const AiUnavailableError(AiFailureKind.error);
     }
     final input = Map<String, Object?>.from(block['input'] as Map);
 
     try {
       return spec.parse(input);
-    } catch (_) {
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('AnthropicGateway.extractStructured: spec.parse threw '
+            '${e.runtimeType}');
+      }
       throw const AiUnavailableError(AiFailureKind.error);
     }
   }
