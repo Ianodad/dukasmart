@@ -60,7 +60,12 @@ Full planning + execution record: `.wargames/LEDGER.md`.
       buttons; cause was configuration, not the model. Now working.
 - [x] **Branch pushed** to `origin/feature/ai-capabilities` @ `dc16323`.
 - [x] 5 synthetic test images generated (gpt-image-2) with ground-truth tables
-      for smoke-testing — `tool/spike_samples/synthetic/`, untracked.
+      for smoke-testing — `tool/spike_samples/synthetic/`.
+- [x] **Sample-photo gitignore settled (`bd752ad`, 2026-07-27).** Every image
+      under `tool/spike_samples/` is ignored; the synthetic README (ground-truth
+      tables + the two traps) is now tracked. Settled *before* the real photos
+      land, so the first `git add -A` after Ian's shoot cannot commit a live
+      shop's supplier prices.
 
 ## Remaining
 - [ ] **Ian runs the M10 spike on REAL samples.** Needs **≥5 printed receipts
@@ -82,10 +87,9 @@ Full planning + execution record: `.wargames/LEDGER.md`.
 - [ ] Then dispatch **03 before 02** when serial — notebook import builds the
       catalog that makes 02's matcher useful.
 - [ ] **Re-verify mission 03 with Codex at dispatch time** — rev 9's last two
-      fixes landed after its final review.
-- [ ] Decide whether `tool/spike_samples/` should be gitignored — Ian's real
-      gate photos will land in the same tree as the 12MB of synthetic ones,
-      which are currently untracked.
+      fixes landed after its final review. Deliberately NOT pre-run: if the
+      gate returns `notebook=NO`, mission 03 is cancelled and the review is
+      wasted. Wait for the gate.
 
 ## Open Flags
 1. **Nothing proves Haiku can read a real receipt yet.** All 269 tests fake
@@ -145,8 +149,13 @@ Full planning + execution record: `.wargames/LEDGER.md`.
   `YYYY-MM-DD`" check non-strict.
 
 ## Git State
-- Branch **`feature/ai-capabilities`** @ **`dc16323`**, tracking
-  `origin/feature/ai-capabilities`. **Pushed — remote tip byte-matches local.**
+- Branch **`feature/ai-capabilities`** @ **`bd752ad`**, tracking
+  `origin/feature/ai-capabilities`. **1 ahead of origin — `bd752ad` (the
+  gitignore commit) is NOT pushed.** Everything through `039d85a` is pushed and
+  byte-matches the remote. Push is a separate explicit go.
+- Gates re-verified from scratch on resume (2026-07-27, orchestrator-run, not
+  taken from the previous session's word): `flutter analyze` → No issues found;
+  `flutter test` → **269 passed**.
 - Commits this session, oldest first:
   - `328d838` docs(wargames): AI v2 mission plans
   - `ec6ff2f` feat(ai): vision + structured extraction plumbing (mission 01)
