@@ -30,7 +30,7 @@ const HeaderBand: React.FC<{ title: string; index: number }> = ({ title, index }
           fontVariantNumeric: "tabular-nums",
         }}
       >
-        DukaSmart · {index}/9
+        DukaSmart · {index}/10
       </div>
     </div>
   </Reveal>
@@ -505,9 +505,65 @@ export const S8Ai: React.FC = () => (
   </LightSlide>
 );
 
-// ---------- 9 · Close ----------
+// ---------- 9 · What's next ----------
 
-export const S9Close: React.FC = () => {
+export const S9Ocr: React.FC = () => (
+  <LightSlide title="Next: point the camera at the paper" index={9}>
+    <Reveal delay={8}>
+      <div style={{ fontFamily: lexend, fontSize: 44, fontWeight: 600, color: T.ink, maxWidth: 1500, lineHeight: 1.3 }}>
+        The notebook does not disappear on day one. The fastest way into the app
+        is to photograph what the owner has already written.
+      </div>
+    </Reveal>
+    <div style={{ marginTop: 56, display: "flex", gap: 40, flex: 1 }}>
+      {[
+        {
+          title: "Snap a supplier receipt",
+          body: "Photograph the delivery note. Lines come back as products and quantities to check, correct, and receive into stock in one confirm.",
+        },
+        {
+          title: "Import the notebook",
+          body: "Photograph a handwritten catalog page. Names and prices become real products, so the shop starts with its own list, not a demo one.",
+        },
+      ].map((c, i) => (
+        <Reveal key={c.title} delay={24 + i * 14} style={{ flex: 1 }}>
+          <Card style={{ height: "100%" }}>
+            <div style={{ fontFamily: lexend, fontSize: 36, fontWeight: 600, color: T.emeraldDeep }}>
+              {c.title}
+            </div>
+            <div style={{ marginTop: 24, fontFamily: lexend, fontSize: 31, fontWeight: 400, color: T.inkSecondary, lineHeight: 1.45 }}>
+              {c.body}
+            </div>
+          </Card>
+        </Reveal>
+      ))}
+    </div>
+    <Reveal delay={56} style={{ marginTop: 48 }}>
+      <div
+        style={{
+          backgroundColor: T.amberContainer,
+          border: `1px solid ${T.amber}22`,
+          borderRadius: 14,
+          padding: "28px 36px",
+          fontFamily: lexend,
+          fontSize: 30,
+          fontWeight: 500,
+          color: T.amber,
+          alignSelf: "flex-start",
+          display: "inline-block",
+        }}
+      >
+        In build, not shipped — the extraction pipeline is written and tested; the
+        screens are not. Accuracy on real Kenyan receipts and real handwriting is
+        being measured before either ships.
+      </div>
+    </Reveal>
+  </LightSlide>
+);
+
+// ---------- 10 · Close ----------
+
+export const S10Close: React.FC = () => {
   const frame = useCurrentFrame();
   const scale = interpolate(frame, [6, 30], [0.6, 1], {
     extrapolateLeft: "clamp",
