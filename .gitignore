@@ -43,3 +43,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Extraction-spike sample photos — pixels out, text in.
+# Real gate photos are a real shop's supplier prices (and often a phone number
+# on the receipt header); the synthetic set is 12MB of generated images. Neither
+# belongs in git. The READMEs and their ground-truth tables DO stay tracked.
+tool/spike_samples/**/*.jpg
+tool/spike_samples/**/*.jpeg
+tool/spike_samples/**/*.png
+tool/spike_samples/**/*.webp
+tool/spike_samples/**/*.heic
