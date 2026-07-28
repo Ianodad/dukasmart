@@ -1,13 +1,18 @@
-# Handoff — Opus 5 — DukaSmart / AI v2 / Mission 01 SHIPPED, gate open (2026-07-27)
+# Handoff — Opus 5 — DukaSmart / AI v2 / SHIPPED TO MAIN, gate open (2026-07-28)
 
 ## Current State
-- **Mission 01 (vision + structured extraction plumbing) is built, reviewed,
-  merged, pushed, and proven against the real Anthropic API.**
-- **Missions 02 and 03 are blocked** — correctly. They gate their own M0 on
+- **AI v1 + v2 mission-01 plumbing are now ON `main`.** Ian gave the explicit
+  go on 2026-07-28; merged via PR #1. `main` is no longer the AI-free MVP.
+  `development` was brought up to match — the two are **content-identical**.
+- **Mission 01 is built, reviewed, merged, and proven against the real
+  Anthropic API.** Mission 03 is now rev 10 and **fully Codex-APPROVED** — it
+  carries no review debt at all.
+- **Missions 02 and 03 remain blocked** — correctly. They gate their own M0 on
   `.wargames/GATE-01-extraction-spike.md`, which still holds the unfilled
   placeholder.
-- **The only thing on the critical path is Ian photographing real samples and
-  running the M10 spike.** No code work is pending or in flight.
+- **Everything on the critical path needs Ian personally:** photographing real
+  samples for the M10 spike, and a live API key for the two AI screenshots +
+  the Swahili check. **No code work is pending or in flight.**
 - Working tree clean (no modified tracked files). Nothing mid-edit.
 
 | Mission | File | Rev | Status |
@@ -27,7 +32,28 @@ Full planning + execution record: `.wargames/LEDGER.md`.
 - Codex (gpt-5.6-sol xhigh): round 1 REVISE (2 Medium, 2 Low) → all 4 folded
   → **round 2 APPROVED**
 
-## Decisions Made (this session)
+## Decisions Made (2026-07-28 session)
+1. **Ran the mission-03 rev-9 delta review EARLY, overriding the previous
+   session's explicit "wait for the gate" deferral.** Reasoning: the deferral
+   optimised cost, not correctness, and the unreviewed delta was a
+   **concurrency guard** — cheapest to catch with slack time, most expensive to
+   hit on the critical path. **The override was right.** Codex found a real
+   Medium: rev 9's guard reorder fixed only the REFUSAL path, so after
+   `saving = true` an F6 validation block or a thrown DAO error still wedged
+   the controller permanently. Folded into rev 10; round 2 APPROVED.
+2. **Merged to `main` via PR, then synced `development` to match.** Ian chose
+   this over the repo's own precedent of routing through `development` first.
+   Both branches now carry identical trees. `feature/ai-capabilities` is fully
+   merged and 0 commits ahead — **safe to delete, left alone deliberately**
+   because the wargame docs still reference it by name.
+3. **Deleted `docs/dukasmart-deck.pptx` from `main` (PR #2).** See Open Flag 7 —
+   it was a pre-AI binary the correction pass never reached.
+4. **Refused to fabricate the AI screenshots.** A placeholder key renders an
+   error state, and stubbing a fake answer would put an invented screenshot of
+   a non-working feature on a public README. Built the capture rig instead and
+   stopped at the key boundary.
+
+## Decisions Made (2026-07-27 session)
 1. **Mission 01 ran on its own phase branch** (`phase/01-ai-vision-extraction`),
    not directly on the feature branch as the mission header said. Merged
    `--no-ff`, phase branch deleted, merged tree verified byte-identical to the
@@ -82,6 +108,24 @@ Full planning + execution record: `.wargames/LEDGER.md`.
       land, so the first `git add -A` after Ian's shoot cannot commit a live
       shop's supplier prices.
 
+## Completed 2026-07-28
+- [x] **Mission 03 rev 10** — `saving` flag made unstrandable on every exit
+      path (`try/finally`, disposed-safe reset, one finally not scattered
+      assignments); required test split in two so neither can pass vacuously.
+      Codex delta round 1 REVISE → round 2 **APPROVED**. Commit `61c2d06`.
+- [x] **Merged to `main`** — PR #1, `f4dc8ee`. Gates re-run by the orchestrator
+      on the merge head first: analyze clean, **269 passed**. Merge dry-run
+      with `git merge-tree` before touching the branch; merged tree inspected
+      to confirm main's own files survived.
+- [x] **Synced `development`** to match main. Verified content-identical.
+- [x] **Removed the stale pptx deck** — PR #2, `bc78cf9`. Also fixed
+      `presentation/README.md` saying "9-slide" when the source has 10.
+- [x] **Scripted screenshot capture** — PR #3, `62ecc8a`.
+      `tool/capture_screens.mjs` drives headless Chrome over CDP, no
+      dependencies (Node 22+ global `WebSocket`). Verified end to end against a
+      keyless build: dashboard + daily report at **exactly 860 x 1864**, fully
+      rendered. CAPTURE.md now leads with it, manual recipe kept as fallback.
+
 ## Remaining
 - [ ] **Ian runs the M10 spike on REAL samples.** Needs **≥5 printed receipts
       and ≥5 handwritten notebook pages**, each photo run **twice** — once on
@@ -99,6 +143,23 @@ Full planning + execution record: `.wargames/LEDGER.md`.
       figure correct** — a partial line or one wrong money figure fails that
       photo, no partial credit. **≥4 of 5 photos = GO** for that feature.
       All four hit-rate cells required.
+- [ ] **Two AI screenshots + the Swahili check — needs a live API key.**
+      Blocked on nothing else; the rig is built and proven. Both at
+      **860 x 1864**, into BOTH `docs/screenshots/` and
+      `remotion/public/screens/`:
+      ```
+      flutter build web --dart-define=ANTHROPIC_API_KEY=sk-ant-...
+      python3 -m http.server 8771 --directory build/web &
+      node tool/capture_screens.mjs http://localhost:8771 docs/screenshots \
+        15-ask-answer:/home/ask 16-daily-report-ai:/home/report
+      ```
+      **Seed real sales + an expense through the UI first** — the rig
+      photographs whatever the profile holds, and a fresh one shows `KES 0`
+      plus the demo seed products (Open Flag 6), which reads as fake.
+      Ask the Swahili question in the same session to close Open Flag 0.
+      Then: README Screenshots row, the "More in…" line, and ~2 lines in
+      `BEATS` in `remotion/src/DukaPromo.tsx`, then re-render the promo.
+      Use a scoped/expiring key and revoke it — it is baked into that build.
 - [ ] Then dispatch **03 before 02** when serial — notebook import builds the
       catalog that makes 02's matcher useful.
 - [x] ~~Re-verify mission 03 with Codex at dispatch time~~ — **DONE EARLY
@@ -111,13 +172,16 @@ Full planning + execution record: `.wargames/LEDGER.md`.
       and reasoning logged in `.wargames/LEDGER.md`.
 
 ## Open Flags
-0. **UNVERIFIED CLAIM now public: Swahili Q&A.** The promo video and deck slide
-   8 both say questions work "in English or Swahili". The gateway does instruct
-   the model to reply in the user's language, and a test covers UTF-8 handling
-   against a mocked response — but nobody has asked a Swahili question with a
-   real key. Codex flagged it Low; shipped deliberately. **Ian: test this during
-   the screenshot trip.** If it fails, fix is one line in `DukaPromo.tsx`
-   (`AiCard`) + one in `slides.tsx` (S8Ai), then re-render the promo.
+0. **UNVERIFIED CLAIM, now on `main`'s front page: Swahili Q&A.** The README,
+   deck slide 8 and the promo all say questions work "in English or Swahili".
+   The gateway does instruct the model to reply in the user's language, and a
+   test covers UTF-8 handling against a mocked response — but nobody has asked
+   a Swahili question with a real key. Codex flagged it Low; shipped
+   deliberately. **Escalated by the merge**: it was a feature-branch risk on
+   2026-07-27, it is the default branch's README now. **Ian: test this during
+   the screenshot trip.** If it fails, the fix is one line in `DukaPromo.tsx`
+   (`AiCard`), one in `slides.tsx` (S8Ai), **and now a README correction on
+   `main` too**, then re-render the promo.
 
 1. **Nothing proves Haiku can read a real receipt yet.** All 269 tests fake
    the extraction result — by design. The spike now proves the *plumbing*
@@ -140,6 +204,23 @@ Full planning + execution record: `.wargames/LEDGER.md`.
    highlighting.
 6. Pre-real-user issue, out of v2 scope: every install carries 5 undeletable
    seed demo products, which notebook import will put in front of the owner.
+   **Also a screenshot hazard** — a fresh profile photographs as an empty demo
+   shop.
+7. **Binary artifacts escape a text review pass. Proven, not theoretical.**
+   `docs/dukasmart-deck.pptx` sat on `main` through the entire three-round
+   documentation correction: 10 slides with **zero** AI content and a slide
+   claiming "125 automated tests" against a real 269, linked prominently from
+   the README. It survived because the correction pass fixed
+   `presentation/src/slides.tsx` — a different artifact — and because
+   `grep "no external AI"` returns nothing on a pptx (text is split across XML
+   runs; you must unzip and strip tags). Removed 2026-07-28.
+   **Rule going forward: anything not plain text — pptx, rendered video,
+   images, PDFs — needs an explicit unpack-and-read check. Grep will not find
+   it and reviewers will not open it.**
+8. **`feature/ai-capabilities` is fully merged and 0 commits ahead of `main`.**
+   Left undeleted on purpose — the wargame docs reference it by name — but it
+   is dead weight and will drift. Delete it once the mission docs stop
+   pointing at it.
 
 ## Critical Context
 - **Why the spike failed the first time, and why it was hard to see.**
@@ -166,6 +247,19 @@ Full planning + execution record: `.wargames/LEDGER.md`.
   printed total does not equal the sum of its lines (correct behavior is to
   transcribe what the paper says, not reconcile it), and `notebook-02` has two
   struck-through price corrections.
+- **The AI screens cannot be photographed without a key — verified in code,
+  not inferred from docs.** `AiConfig.isConfigured` is `apiKey.isNotEmpty`
+  (`lib/core/ai/ai_config.dart:27`) and `aiAvailableProvider`
+  (`lib/core/ai/ai_providers.dart:18`) gates every AI surface. Without the
+  dart-define the Ask bar and insight card are **not in the widget tree** —
+  there is nothing on screen to capture. Confirmed visually: a keyless build
+  photographs a dashboard with no "Ask about your duka" bar.
+- **Screenshot rig trap, already paid for.** Do NOT use Chrome's plain
+  `--screenshot` flag. It needs `--virtual-time-budget` to wait for the app,
+  but virtual time freezes real timers while Drift's `sqlite3` worker runs
+  off-thread — the app never leaves the splash screen. Budgets of 12s and 40s
+  both photographed the logo. `tool/capture_screens.mjs` waits in real time
+  over CDP instead. It needs no npm install (Node 22+ global `WebSocket`).
 - Test env: `export PATH="$HOME/flutter/bin:$PATH"`. **No CI** — analyze and
   test are run manually, by the orchestrator, never accepted from an
   executor's report.
@@ -176,22 +270,27 @@ Full planning + execution record: `.wargames/LEDGER.md`.
   `YYYY-MM-DD`" check non-strict.
 
 ## Git State
-- Branch **`feature/ai-capabilities`** — tip moves with each doc commit; it was
-  `fa54ab6` when this file was first written, then `a9d4b94` (the handoff
-  commit itself), then the rev-10 review commit. Check `git log -1` rather
-  than trusting this line. **PUSHED** (Ian's
-  explicit go, 2026-07-27). Remote tip and tree hash both verified identical to
-  local (`49f33b5…`). `039d85a..fa54ab6` = 12 commits: spike gitignore, the
-  documentation correction pass, the deck AI + OCR slides, and the promo AI card.
-- **`main` (80c0e4b) and `development` (6fb2cd3) deliberately untouched.** Ian
-  chose push-only; the merge decision stays open until the M10 gate resolves.
-  `main` is still the v0.1.0 MVP and does not even carry AI v1.
-- **Ian owes 2 screenshots** before the promo can gain an AI beat: the Ask
-  screen mid-answer and the daily-report AI card, both at **860×1864**
-  (430×932 @ DPR 2 — the promo's phone frame is `phoneW = 430`). Recipe in
-  `docs/screenshots/CAPTURE.md`. Copy into BOTH `docs/screenshots/` and
-  `remotion/public/screens/` — they are byte-identical duplicates. Adding the
-  beats is then ~2 lines in `BEATS` in `remotion/src/DukaPromo.tsx`.
+**Tips move with every commit — run `git log -1` rather than trusting hashes
+written here.** As of the 2026-07-28 handoff commit:
+
+| Branch | Tip | Note |
+|---|---|---|
+| `main` | `62ecc8a` | **Carries AI v1 + v2 plumbing.** No longer the AI-free MVP |
+| `development` | `5375811` | **Content-identical to `main`** — `git diff` between them is empty |
+| `feature/ai-capabilities` | `61c2d06` | Fully merged, **0 commits ahead**. See Open Flag 8 |
+
+- **PRs merged 2026-07-28:** #1 (`f4dc8ee`, AI to main), #2 (`bc78cf9`, stale
+  pptx removed), #3 (`62ecc8a`, capture rig). All merged with `gh pr merge
+  --merge`; branches for #2 and #3 deleted on merge.
+- **Both merges were dry-run with `git merge-tree` before either branch was
+  touched**, and the resulting tree inspected to confirm main's own files
+  (notably `docs/dukasmart-deck.pptx`, which existed only on main) survived.
+  Gates re-run by the orchestrator on the merge head before PR #1: analyze
+  clean, **269 passed**.
+- **Push policy in effect:** Ian's explicit go on 2026-07-27 covered making the
+  branch public; routine commits to an already-public branch have been pushed
+  without re-asking. Merges to `main`/`development` were done only on his
+  explicit 2026-07-28 instruction, per Hard Rule 14.
 - Fixed `~/.claude-second-account/settings.json`: it had `Write(~/SecondBrain/**)`,
   which is not a valid rule form (only `Edit(path)` matches file-writing tools),
   so the account refused to boot and **every** dispatch failed. Now `Edit(...)`.
@@ -200,25 +299,38 @@ Full planning + execution record: `.wargames/LEDGER.md`.
 - Gates re-verified from scratch on resume (2026-07-27, orchestrator-run, not
   taken from the previous session's word): `flutter analyze` → No issues found;
   `flutter test` → **269 passed**.
-- Commits this session, oldest first:
-  - `328d838` docs(wargames): AI v2 mission plans
-  - `ec6ff2f` feat(ai): vision + structured extraction plumbing (mission 01)
-  - `17e07ff` Merge phase/01-ai-vision-extraction
-  - `c8a808c` fix(spike): make extraction failures diagnosable
-  - `dc16323` docs(wargames): record spike root cause and current state
-- Sits on top of `afd617c` (the CORS header fix from the prior session).
 - **Working tree clean** — no modified tracked files.
 - Untracked and intentionally so: `tool/spike_samples/synthetic/` (12MB of
-  generated images), plus pre-existing `.agents/`, `.claude/`, `presentation/`,
-  `remotion/*`, `skills-lock.json`, `docs/superpowers/HANDOFF.md`.
-- `main` and `development` untouched. `origin/development` still holds AI v1.
+  generated images), plus pre-existing `.agents/`, `.claude/`,
+  `skills-lock.json`, `docs/superpowers/HANDOFF.md`. (`presentation/` and
+  `remotion/` are now TRACKED — that changed on 2026-07-27.)
 - Phase branch `phase/01-ai-vision-extraction` merged and deleted.
+- Earlier arc, for context: `328d838` mission plans → `ec6ff2f` mission 01 →
+  `17e07ff` phase merge → `c8a808c` spike diagnostics → the 2026-07-27
+  documentation correction pass → `61c2d06` mission 03 rev 10. Sits on top of
+  `afd617c` (the CORS header fix).
 
 ## Resume instruction
 Read this file, then `.wargames/LEDGER.md` for the decision record.
 
-**No code work is pending.** The next event is Ian pasting M10 spike results
-from real photos. When that happens: score each photo against the pass bar
+**No code work is pending, and nothing here can be unblocked by working
+harder.** Both open threads need Ian personally — a camera and an API key.
+Do NOT invent adjacent work to look busy; the previous session's queue was
+genuinely empty and the right move was to say so. (The one exception found on
+2026-07-28 — the deferred mission-03 review — has now been taken, and it paid
+off. There is no second one hiding.)
+
+**Two things can arrive, in either order:**
+
+**(a) A live API key** → build with the dart-define, seed real sales + an
+expense through the UI, run `tool/capture_screens.mjs` (see Remaining for the
+exact chain), ask one Swahili question to close Open Flag 0, copy both PNGs
+into `docs/screenshots/` AND `remotion/public/screens/`, then do the README
+Screenshots row and the `BEATS` entries in `remotion/src/DukaPromo.tsx` and
+re-render the promo. **Never fabricate these screenshots** — see Decision 4.
+
+**(b) M10 spike results** from real photos. When that happens: score each photo
+against the pass bar
 (≥80% of visible lines AND every money figure correct; ≥4 of 5 per feature),
 fill in `.wargames/GATE-01-extraction-spike.md` including all four hit-rate
 cells, and write the final `GATE:` line naming the validated model.
