@@ -11,7 +11,37 @@ Two folders hold byte-identical copies. **Both must be updated together:**
 - `docs/screenshots/` — what the README links to
 - `remotion/public/screens/` — what the promo video loads via `staticFile()`
 
-## Recipe
+## Scripted capture (preferred)
+
+`tool/capture_screens.mjs` drives headless Chrome over CDP and emits the exact
+860 x 1864 geometry, so the numbers below cannot be fat-fingered:
+
+```
+export PATH="$HOME/flutter/bin:$PATH"
+flutter build web --dart-define=ANTHROPIC_API_KEY=sk-ant-...   # key only for AI screens
+python3 -m http.server 8771 --directory build/web &
+node tool/capture_screens.mjs http://localhost:8771 docs/screenshots \
+  15-ask-answer:/home/ask 16-daily-report-ai:/home/report
+```
+
+No dependencies — it uses the `WebSocket` global built into Node 22+.
+
+Two things it deliberately does NOT do:
+
+- **It cannot seed data.** It photographs whatever state the browser profile is
+  already in. A fresh profile shows `KES 0` and the demo seed products, which
+  reads as fake. Put real sales and expenses in first (step 4 below), then run it.
+- **It cannot conjure the AI screens.** `AiConfig.isConfigured` is
+  `apiKey.isNotEmpty`, and `aiAvailableProvider` gates every AI surface — build
+  without the dart-define and the Ask bar and insight card are not in the widget
+  tree at all. There is nothing to photograph.
+
+Do not reach for Chrome's plain `--screenshot` flag instead. It needs
+`--virtual-time-budget` to wait for the app, and virtual time freezes real
+timers while Drift's `sqlite3` worker runs off-thread — the app sits on the
+splash screen forever and you get a screenshot of the logo.
+
+## Manual recipe (fallback)
 
 1. Start the app on Chrome:
 
