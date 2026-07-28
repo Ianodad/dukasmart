@@ -1,4 +1,13 @@
-# Wargame 03 — Notebook Import (rev 9)
+# Wargame 03 — Notebook Import (rev 10)
+
+Rev 10 closes the rev-9 delta review (Codex, xhigh, 2026-07-28): rev 9's guard
+reorder fixed only the REFUSAL path, but `saving` stayed strandable on every
+other exit after it is set — an F6 validation block or a thrown DAO error would
+wedge the controller and block every later save. The post-guard body is now
+required to sit in `try/finally` with a disposed-safe reset, and the required
+test is split in two, because the single rev-9 test could pass vacuously (a
+stranded reentrancy return completes without throwing). Delta 2 of rev 9 —
+`normalizeName` → `catalogKey` — was reviewed and confirmed CLEAN, no changes.
 
 Rev 9 closes the round-7 review: the save() in-flight refusal now runs before
 `saving` is set (a refusal could otherwise strand the flag and block every
@@ -526,10 +535,35 @@ creates real duplicates).**
      refusal path — a stranded `saving` flag would permanently block every
      later save.)
   3. Only then `saving = true;`.
-- Required test: `save()` called while a page is still extracting performs
-  ZERO writes, leaves the screen on Review, AND a subsequent `save()` after
-  that page completes succeeds normally (proving the refusal did not strand
-  the flag).
+- **`saving` MUST be unstrandable on EVERY exit path, not just refusals
+  (Codex rev-9 delta review, Medium).** Reordering the guards fixed only the
+  refusal case. Once `saving = true` is set at step 3, the body below it can
+  still early-return (F6 validation blocks the save) or throw (DAO failure,
+  disposed notifier), and only the catalog-re-read failure currently resets
+  the flag (rev 4 FIX 4). Therefore: **wrap the entire post-guard body in
+  `try { … } finally { … }` and reset `saving = false` in the `finally`**, so
+  no early return, exception, or validation block can leave the controller
+  permanently wedged. The reset must be disposed-safe — a notifier torn down
+  mid-save must not throw out of the `finally` when the state write lands.
+  Do NOT scatter per-path `saving = false` assignments; one `finally` is the
+  whole guarantee. This SUBSUMES the rev-4 FIX 4 catalog-read reset: every
+  statement elsewhere in this plan that "`saving` resets to `false`" on a
+  failed pre-save catalog re-read (lines ~387, ~500, ~639) remains true and
+  its test still stands — the `finally` is now what makes it true, so do not
+  also write a bespoke assignment on that path.
+- Required tests (BOTH — the first alone passes vacuously, since a stranded
+  reentrancy return completes without throwing):
+  1. **Refusal does not strand.** `save()` called while a page is still
+     extracting performs ZERO writes and leaves the screen on Review; assert
+     `saving == false` immediately after the refusal; then let extraction
+     finish and call `save()` again **on the SAME controller instance** and
+     assert `result.added == 1` AND exactly one new product in the DAO.
+     Asserting only "does not throw" is not acceptable — it cannot fail.
+  2. **A blocked save does not strand.** Trigger an F6 validation block
+     (invalid selected row) → assert zero writes AND `saving == false` →
+     correct the row → `save()` again on the SAME instance → assert the write
+     lands. This is the path the `finally` exists for; without this test the
+     `try/finally` is unverified.
 - **Exact save-time order (round-5 review, FIX 3 — otherwise
   `skippedDuplicates` can never be counted):**
   1. Re-read the fresh catalog: `final freshCatalog =

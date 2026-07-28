@@ -137,17 +137,45 @@ One entry per mission. Draft location, point-by-point self-grade against
   check, then in-flight refusal, THEN `saving = true`, with a test that a
   later save succeeds after extraction finishes; the three text sites
   corrected; an `ACME/Plus` vs `ACMEPlus` test added.
-- **Findings by round: 30 → 20 → 10 → 3 → 3 → 2 → 2 (both minor).**
+- **Rev-9 delta review (Codex xhigh, 2026-07-28) — round 1 REVISE.** Run EARLY,
+  diverging from the "wait for the gate" decision below (rationale recorded
+  there). Narrow scope: only the two rev-9 fixes, which had never been
+  reviewed. Result vindicated running it: the "minor" guard fix was
+  **incomplete**. Reordering the guards fixed only the REFUSAL path; after
+  `saving = true` an F6 validation block or a thrown DAO error still wedged
+  the controller permanently (Medium). The single required test could also
+  pass vacuously — a stranded reentrancy return completes without throwing
+  (Low). Delta 2 (`normalizeName` → `catalogKey`) confirmed **CLEAN**: no
+  leftover site, and the `ACME/Plus` test genuinely discriminates, because
+  `normalizeName` strips `/` while `catalogKey` preserves it.
+- **Rev 10 (orchestrator, direct):** post-guard body must sit in
+  `try/finally` with a disposed-safe reset — one `finally`, no scattered
+  per-path assignments — explicitly subsuming the rev-4 FIX 4 catalog-read
+  reset so the three sites that assert it stay true without contradiction.
+  Required test split in two: refusal-does-not-strand and
+  blocked-save-does-not-strand, both on the SAME controller instance with
+  concrete `added`/DAO assertions, since "does not throw" cannot fail.
+- **Rev-9 delta review round 2 → APPROVED, no findings.**
+- **Findings by round: 30 → 20 → 10 → 3 → 3 → 2 → 2 → 2 → 0.**
 
 ## Status
 - **01-ai-vision-extraction — rev 6, APPROVED (Codex round 5).**
 - **02-snap-to-restock — rev 5, APPROVED (Codex round 4).**
-- **03-notebook-import — rev 9. Substance verified by Codex round 7; the two
-  minor fixes above were applied AFTER that review and are not themselves
-  re-verified.** Deliberately not re-reviewed: mission 03 cannot be
-  dispatched until the M10 spike returns `notebook=YES`, so its final stamp
-  is not on the critical path, and a poor handwriting result may change the
-  mission anyway. **Re-verify at dispatch time, after the spike.**
+- **03-notebook-import — rev 10, APPROVED (Codex rev-9 delta review, round 2).**
+  Fully stamped; no review debt remains. Still gated on the M10 spike
+  returning `notebook=YES`, but that is now the ONLY thing between it and
+  dispatch.
+- **Logged divergence (Opus, 2026-07-28).** The prior session deliberately
+  deferred this review to dispatch time, reasoning that a `notebook=NO` gate
+  would cancel mission 03 and waste the review. I overrode that and ran it
+  early. Reasoning: the deferral optimised cost, not correctness, and the
+  unreviewed delta was a **concurrency guard** — the class of defect that is
+  cheapest to catch with slack time and most expensive to hit on the critical
+  path. The asymmetry favoured spending it: downside was one wasted cheap
+  review (OpenAI quota, not Claude), upside was a latent wedge caught early.
+  **The override was correct** — the review found a real Medium the rev-9 fix
+  had missed. Had we waited, that bug would have surfaced with Ian holding
+  spike results and waiting on a dispatch.
 
 ## Execution arc
 

@@ -14,7 +14,7 @@
 |---|---|---|---|
 | 01 vision + extraction plumbing | `.wargames/wargames/01-ai-vision-extraction.md` | 6 | **SHIPPED** — Codex APPROVED, merged, real-API verified |
 | 02 snap-to-restock | `.wargames/wargames/02-snap-to-restock.md` | 5 | Plan APPROVED — BLOCKED on the gate |
-| 03 notebook import | `.wargames/wargames/03-notebook-import.md` | 9 | Plan substance-verified — BLOCKED on the gate; **re-verify with Codex at dispatch** |
+| 03 notebook import | `.wargames/wargames/03-notebook-import.md` | 10 | **Plan APPROVED** (Codex delta round 2) — BLOCKED on the gate, nothing else |
 
 Full planning + execution record: `.wargames/LEDGER.md`.
 
@@ -101,10 +101,14 @@ Full planning + execution record: `.wargames/LEDGER.md`.
       All four hit-rate cells required.
 - [ ] Then dispatch **03 before 02** when serial — notebook import builds the
       catalog that makes 02's matcher useful.
-- [ ] **Re-verify mission 03 with Codex at dispatch time** — rev 9's last two
-      fixes landed after its final review. Deliberately NOT pre-run: if the
-      gate returns `notebook=NO`, mission 03 is cancelled and the review is
-      wasted. Wait for the gate.
+- [x] ~~Re-verify mission 03 with Codex at dispatch time~~ — **DONE EARLY
+      (2026-07-28), overriding the previous session's deferral.** Round 1
+      REVISE: rev 9's guard reorder fixed only the refusal path, leaving
+      `saving` strandable on F6-validation and thrown-error exits — a
+      permanent wedge. Folded into rev 10 (`try/finally`, disposed-safe reset,
+      required test split in two). Round 2 **APPROVED, no findings.** Mission
+      03 now carries no review debt; the gate is its only blocker. Divergence
+      and reasoning logged in `.wargames/LEDGER.md`.
 
 ## Open Flags
 0. **UNVERIFIED CLAIM now public: Swahili Q&A.** The promo video and deck slide
@@ -172,7 +176,10 @@ Full planning + execution record: `.wargames/LEDGER.md`.
   `YYYY-MM-DD`" check non-strict.
 
 ## Git State
-- Branch **`feature/ai-capabilities`** @ **`fa54ab6`** — **PUSHED** (Ian's
+- Branch **`feature/ai-capabilities`** — tip moves with each doc commit; it was
+  `fa54ab6` when this file was first written, then `a9d4b94` (the handoff
+  commit itself), then the rev-10 review commit. Check `git log -1` rather
+  than trusting this line. **PUSHED** (Ian's
   explicit go, 2026-07-27). Remote tip and tree hash both verified identical to
   local (`49f33b5…`). `039d85a..fa54ab6` = 12 commits: spike gitignore, the
   documentation correction pass, the deck AI + OCR slides, and the promo AI card.
@@ -219,4 +226,6 @@ cells, and write the final `GATE:` line naming the validated model.
 Do NOT dispatch mission 02 or 03 until that file carries a real
 `GATE: GO ... model=claude-haiku-4-5-20251001` line — it currently holds the
 unfilled placeholder on purpose. When the gate opens, dispatch **03 before
-02**, and re-verify 03 with Codex first.
+02**. Both plans are now fully Codex-APPROVED (03 at rev 10, 2026-07-28), so
+the gate result is the only thing standing between the spike and dispatch —
+no review step remains.
