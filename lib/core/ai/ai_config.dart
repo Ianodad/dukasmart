@@ -11,8 +11,15 @@ class AiConfig {
 
   static const String apiKey = String.fromEnvironment('ANTHROPIC_API_KEY');
 
-  /// Single const so switching models later is a one-line change.
-  static const String model = 'claude-opus-5';
+  /// Drives `ask()` and `generateInsight()` only.
+  static const String model =
+      String.fromEnvironment('AI_MODEL', defaultValue: 'claude-opus-5');
+
+  /// Drives `extractStructured()` only — independent of [model].
+  static const String extractionModel = String.fromEnvironment(
+    'AI_EXTRACTION_MODEL',
+    defaultValue: 'claude-haiku-4-5-20251001',
+  );
 
   static const String endpoint = 'https://api.anthropic.com/v1/messages';
   static const String anthropicVersion = '2023-06-01';

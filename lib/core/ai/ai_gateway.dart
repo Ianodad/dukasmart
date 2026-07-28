@@ -1,3 +1,4 @@
+import 'ai_image.dart';
 import 'duka_tools.dart';
 import 'snapshot_builder.dart';
 
@@ -35,6 +36,23 @@ class AiUnavailableError implements Exception {
   String toString() => 'AiUnavailableError($kind)';
 }
 
+/// Describes one structured-extraction call: the forced tool's name,
+/// description, and input schema, plus the parser that turns the raw
+/// tool_use input into a typed [T].
+class ExtractionSpec<T> {
+  const ExtractionSpec({
+    required this.toolName,
+    required this.description,
+    required this.inputSchema,
+    required this.parse,
+  });
+
+  final String toolName;
+  final String description;
+  final Map<String, Object?> inputSchema;
+  final T Function(Map<String, Object?> input) parse;
+}
+
 abstract class AiGateway {
   /// Multi-turn Q&A with tool use. Returns the final assistant text.
   /// Throws [AiUnavailableError] on network/API failure.
@@ -43,4 +61,15 @@ abstract class AiGateway {
   /// One-shot insight paragraph from a precomputed snapshot.
   /// Throws [AiUnavailableError] on network/API failure.
   Future<String> generateInsight(ShopSnapshot snapshot);
+
+  /// Single-turn structured extraction: sends [images] + [instruction] with
+  /// [spec]'s tool forced via `tool_choice`, then runs `spec.parse` on the
+  /// tool_use input INSIDE the gateway. A typed [T] or an
+  /// [AiUnavailableError] are the only possible outcomes — `spec.parse`
+  /// throwing anything is caught and remapped to [AiUnavailableError].
+  Future<T> extractStructured<T>({
+    required String instruction,
+    required List<AiImage> images,
+    required ExtractionSpec<T> spec,
+  });
 }

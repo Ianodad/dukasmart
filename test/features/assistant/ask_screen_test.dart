@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dukasmart/core/ai/ai_gateway.dart';
+import 'package:dukasmart/core/ai/ai_image.dart';
 import 'package:dukasmart/core/ai/ai_providers.dart';
 import 'package:dukasmart/core/ai/ai_query_service.dart';
 import 'package:dukasmart/core/ai/anthropic_gateway.dart';
@@ -165,6 +166,15 @@ class _CompleterAiGateway implements AiGateway {
 
   @override
   Future<String> generateInsight(ShopSnapshot snapshot) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<T> extractStructured<T>({
+    required String instruction,
+    required List<AiImage> images,
+    required ExtractionSpec<T> spec,
+  }) {
     throw UnimplementedError();
   }
 }
