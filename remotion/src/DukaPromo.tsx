@@ -27,6 +27,11 @@ const T = {
 const FPS = 30;
 const INTRO = 4 * FPS;
 const BEAT = Math.round(3.4 * FPS);
+// Typographic card for the AI layer. Deliberately NOT a PhoneBeat: there is no
+// screenshot of the Ask screen yet, and a mock-up inside the phone frame beside
+// eight real captures would read as one. When a real 860x1864 capture of the
+// Ask screen lands, this can become an ordinary BEATS entry instead.
+const FEATURE = Math.round(4.2 * FPS);
 const OUTRO = 5 * FPS;
 
 type Beat = { img: string; title: string; line: string };
@@ -42,7 +47,8 @@ const BEATS: Beat[] = [
   { img: "14-close-day-live.png", title: "Close the day", line: "Gross, net, expected cash — a ledger, not a guess." },
 ];
 
-export const PROMO_DURATION_FRAMES = INTRO + BEATS.length * BEAT + OUTRO;
+export const PROMO_DURATION_FRAMES =
+  INTRO + BEATS.length * BEAT + FEATURE + OUTRO;
 
 const ease = Easing.bezier(0.16, 1, 0.3, 1);
 
@@ -140,6 +146,62 @@ const PhoneBeat: React.FC<{ beat: Beat; index: number }> = ({ beat, index }) => 
   );
 };
 
+const AiCard: React.FC = () => {
+  const frame = useCurrentFrame();
+  const kicker = interpolate(frame, [0, 18], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
+  const title = interpolate(frame, [10, 32], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
+  const line = interpolate(frame, [22, 46], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
+  const note = interpolate(frame, [40, 64], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
+  const rule = interpolate(frame, [16, 44], [0, 300], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
+  const out = interpolate(frame, [FEATURE - 12, FEATURE], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  return (
+    <AbsoluteFill style={{ justifyContent: "center", paddingLeft: 140, paddingRight: 140, opacity: out }}>
+      <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: 6, color: T.emeraldBright, textTransform: "uppercase", opacity: kicker }}>
+        New
+      </div>
+      <div style={{ height: 6, width: rule, background: T.emerald, borderRadius: 3, marginTop: 24 }} />
+      <div
+        style={{
+          fontSize: 96,
+          fontWeight: 700,
+          color: T.onDark,
+          marginTop: 34,
+          lineHeight: 1.05,
+          opacity: title,
+          transform: `translateY(${(1 - title) * 44}px)`,
+        }}
+      >
+        Ask your duka.
+      </div>
+      <div
+        style={{
+          fontSize: 44,
+          color: T.onDarkMuted,
+          marginTop: 30,
+          lineHeight: 1.4,
+          maxWidth: 1300,
+          opacity: line,
+          transform: `translateY(${(1 - line) * 40}px)`,
+        }}
+      >
+        Plain-language questions about your own numbers — in English or Swahili.
+        Plus an AI read on the daily report.
+      </div>
+      <div
+        style={{
+          fontSize: 32,
+          color: T.onDarkMuted,
+          marginTop: 44,
+          opacity: note * 0.75,
+        }}
+      >
+        Optional and read-only. No key, no AI, no network — the app is unchanged.
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 const Outro: React.FC = () => {
   const frame = useCurrentFrame();
   const a = interpolate(frame, [0, 22], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
@@ -152,7 +214,7 @@ const Outro: React.FC = () => {
           Duka<span style={{ color: T.emeraldBright }}>Smart</span>
         </div>
         <div style={{ fontSize: 40, marginTop: 30, color: T.onDarkMuted, opacity: b }}>
-          Flutter · offline-first · open source (MIT)
+          Flutter · offline-first · AI-optional · open source (MIT)
         </div>
         <div
           style={{
@@ -185,7 +247,10 @@ export const DukaPromo: React.FC = () => {
           <PhoneBeat beat={beat} index={i} />
         </Sequence>
       ))}
-      <Sequence from={INTRO + BEATS.length * BEAT} durationInFrames={OUTRO}>
+      <Sequence from={INTRO + BEATS.length * BEAT} durationInFrames={FEATURE}>
+        <AiCard />
+      </Sequence>
+      <Sequence from={INTRO + BEATS.length * BEAT + FEATURE} durationInFrames={OUTRO}>
         <Outro />
       </Sequence>
     </AbsoluteFill>

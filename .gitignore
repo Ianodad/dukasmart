@@ -43,3 +43,19 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Extraction-spike sample photos — pixels out, text in.
+# Real gate photos are a real shop's supplier prices (and often a phone number
+# on the receipt header); the synthetic set is 12MB of generated images. Neither
+# belongs in git. The READMEs and their ground-truth tables DO stay tracked.
+tool/spike_samples/**/*.jpg
+tool/spike_samples/**/*.jpeg
+tool/spike_samples/**/*.png
+tool/spike_samples/**/*.webp
+tool/spike_samples/**/*.heic
+
+# Rendered deck/promo artifacts — source is tracked, output is not.
+# presentation/out/ alone is 6.2MB of mp4+pptx that re-renders from src in
+# one command. The published promo in docs/ IS tracked, deliberately.
+presentation/out/
+remotion/out/
