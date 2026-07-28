@@ -21,7 +21,9 @@ UI restyle (PRODUCT.md/DESIGN.md contract) shipped.
 - MIT LICENSE (`a9062f5`). 14 screenshots + README gallery (`2a5b3f2`).
 - Remotion promo video (36s 1080p) + GIF preview embedded in README
   (`8cb2710`); project source in `remotion/`.
-- 10-slide pptx deck `docs/dukasmart-deck.pptx` (`857d2ab`).
+- 10-slide pptx deck `docs/dukasmart-deck.pptx` (`857d2ab`). **Removed
+  2026-07-28** — it predated the AI work, carried no AI slide and a stale test
+  count, and was superseded by the Remotion deck source in `presentation/`.
 - **GitHub Release `v0.1.0-mvp` LIVE** with `dukasmart-v0.1.0.apk` (75MB,
   debug-signed) + promo mp4: github.com/Ianodad/dukasmart/releases.
   NDK 28.2.13676358 installed manually (gradle download hung; direct curl).

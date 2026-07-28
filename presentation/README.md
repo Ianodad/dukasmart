@@ -1,6 +1,6 @@
 # DukaSmart deck
 
-The 9-slide DukaSmart presentation, built in [Remotion](https://remotion.dev) so
+The 10-slide DukaSmart presentation, built in [Remotion](https://remotion.dev) so
 the deck is code — same brand tokens as the app, no copy drifting inside a
 proprietary slide file.
 
