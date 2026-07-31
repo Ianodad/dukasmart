@@ -110,11 +110,23 @@ async function tap(x, y) {
   await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', ...base, buttons: 0 });
 }
 
+// Page.navigate resolves with errorText when the load actually failed. Without
+// this check a dead server is invisible: Chrome renders its own "This site
+// can't be reached" page, the rig screenshots THAT at a perfect 860x1864, and
+// every downstream check (geometry, docs/remotion sync) still passes. Broken
+// captures have been committed this way — fail loudly instead.
+async function navigate(url) {
+  const res = await cdp('Page.navigate', { url });
+  if (res?.errorText) {
+    throw new Error(`navigation to ${url} failed: ${res.errorText} — is the server up?`);
+  }
+}
+
 for (const a of actions) {
   if (a.boot) {
-    await cdp('Page.navigate', { url: baseUrl });
+    await navigate(baseUrl);
   } else if (a.nav !== undefined) {
-    await cdp('Page.navigate', { url: `${baseUrl}/#${a.nav}` });
+    await navigate(`${baseUrl}/#${a.nav}`);
   } else if (a.tap) {
     await tap(a.tap[0], a.tap[1]);
   } else if (a.scroll) {

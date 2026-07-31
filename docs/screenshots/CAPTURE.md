@@ -57,7 +57,15 @@ Because Flutter renders to a canvas there are no selectors — steps are CSS
 coordinates measured off a screenshot (screenshot px ÷ 2). **If a screen's
 layout changes, the coordinates go stale silently:** the tap lands on nothing
 and the run continues. Always eyeball the output rather than trusting the exit
-code. Everything must happen in one invocation; committed data survives in the
+code.
+
+**Look at the actual pixels before committing, not just the metadata.** Both
+rigs now abort when `Page.navigate` reports an `errorText`, because a dead
+server used to be completely invisible: Chrome renders its own "This site
+can't be reached" page, the rig captures *that* at a flawless 860 × 1864, and
+`file` plus a `docs/` ↔ `remotion/` byte-compare both still pass. Two error-page
+PNGs were committed that way. Geometry and folder sync are necessary checks,
+not sufficient ones. Everything must happen in one invocation; committed data survives in the
 profile's IndexedDB, but on-screen state does not.
 
 Do not reach for Chrome's plain `--screenshot` flag instead. It needs
