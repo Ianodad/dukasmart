@@ -138,6 +138,13 @@ It prompts for the key with echo off. Do not pass the key as an argument:
 argv is visible to any process via `ps` and lands in your shell history.
 `ANTHROPIC_API_KEY=... tool/capture_ai_screens.sh` also works.
 
+It preflights the key against the API before spending a build on it. That
+guard matters more than it looks: because `isConfigured` is just
+`apiKey.isNotEmpty`, a dead key still renders every AI surface, so a run
+would otherwise produce four plausible-looking PNGs — `17` holding an error
+bubble, `18` silently missing its card — mirror them into
+`remotion/public/screens/`, and exit 0.
+
 Every coordinate in it has been dry-run against a build with a dummy key, so
 the taps are known-good — only the AI *content* was unverifiable that way. Two
 traps it already accounts for, both of which failed silently the first time:

@@ -40,6 +40,37 @@ if ! command -v google-chrome >/dev/null; then
   exit 1
 fi
 
+# Preflight the key BEFORE spending a build on it.
+#
+# Without this the run is a footgun: any non-empty string makes the AI surfaces
+# render, so a dead key still produces four plausible-looking PNGs — 17 holding
+# an error bubble and 18 silently missing its card — writes them into
+# docs/screenshots/, mirrors them into remotion/public/screens/, and exits 0.
+# One cheap call turns that into a fast, loud failure.
+if command -v curl >/dev/null; then
+  echo "==> checking the key against the API"
+  code=$(curl -sS -o /dev/null -w '%{http_code}' -m 30 \
+    -X POST https://api.anthropic.com/v1/messages \
+    -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+    -H "anthropic-version: 2023-06-01" \
+    -H "content-type: application/json" \
+    -d '{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}' \
+    || echo "000")
+  case "${code}" in
+    200) echo "    key OK" ;;
+    401|403)
+      echo "error: the API rejected this key (HTTP ${code})." >&2
+      echo "       Every AI surface would still RENDER — isConfigured is just" >&2
+      echo "       apiKey.isNotEmpty — so the run would produce four" >&2
+      echo "       plausible-looking but wrong PNGs. Stopping instead." >&2
+      exit 1 ;;
+    000) echo "warning: could not reach the API (network?). Continuing — check the output by eye." >&2 ;;
+    *)   echo "warning: unexpected preflight status ${code}. Continuing — check the output by eye." >&2 ;;
+  esac
+else
+  echo "warning: curl not found, skipping the key preflight." >&2
+fi
+
 echo "==> building web with the key compiled in"
 flutter build web --dart-define=ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}"
 
