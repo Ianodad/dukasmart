@@ -2,11 +2,17 @@
 
 DukaSmart is an Android inventory and sales app built for a single Kenyan kiosk
 owner — one owner, one kiosk, one phone, local-first data ("Know your stock.
-Grow your business."). Nothing leaves the device unless the optional AI
-features below are built in. It covers the full daily workflow of a small duka: add
+Grow your business."). It covers the full daily workflow of a small duka: add
 products and opening stock, record sales (cash or M-PESA), watch stock
 auto-reduce, log expenses, keep an eye on low-stock items, and close the day
 with a plain-language summary of what happened and why.
+
+On top of that offline core sits an optional **AI layer**: *Ask your duka* —
+plain-language questions answered from the shop's own numbers — and an *AI
+insight* on the daily report. It is off unless deliberately built in. A build
+without an Anthropic API key compiled into it renders no AI surface and makes
+no network call, so nothing leaves the device. What it does, and exactly what
+gets sent when it is on, is in [AI features](#ai-features-optional-online).
 
 ## Demo
 
@@ -24,6 +30,53 @@ and renders with one command.*
 
 More in [`docs/screenshots/`](docs/screenshots/) — products, expenses, add
 stock, low stock, and close day.
+
+### The AI layer
+
+These two are from a build with a key compiled in — which is why the dashboard
+carries an "Ask about your duka…" bar that the shot above does not. That is
+the actual difference the AI layer makes to the UI:
+
+| Dashboard (AI build) | Ask your duka |
+|---|---|
+| ![Dashboard with the ask bar](docs/screenshots/15-dashboard-ai.png) | ![Ask your duka](docs/screenshots/16-ask-suggestions.png) |
+
+**Still missing: an answered question and the daily report's AI insight
+card.** Both need a *valid* key, not just any key — the surfaces render as
+soon as a key is present, but the content only exists once a real call
+returns. Capturing them is a live-key run away; the rig and the command are in
+[`docs/screenshots/CAPTURE.md`](docs/screenshots/CAPTURE.md).
+
+## Features
+
+**The daily workflow — always on, fully offline:**
+
+- **Dashboard** — today's sales, the cash vs M-PESA split, and what needs
+  attention
+- **New Sale (POS)** — tap or search a product, or scan its barcode; live cart
+  totals; stock cannot go negative
+- **Payment** — cash, with change computed the moment the amount is entered, or
+  M-PESA recorded manually (amount + optional transaction code; no Daraja call)
+- **Products** — add a product with profit-per-unit previewed as you type, or
+  pull one from the common-products catalog
+- **Stock** — opening stock, restocks that track the till cash-out, automatic
+  reduction on every sale, and a low-stock list against per-product thresholds
+- **Expenses** — log what went out, by category and free-text reason
+- **Close Day** — gross, COGS, net, expected vs actual cash, and a
+  deterministic plain-language summary of what happened and why
+
+**The AI layer — optional, online, off unless built in:**
+
+- **Ask your duka** — ask the shop a question in plain language; the figures
+  come from your own ledger through read-only queries, the wording comes from
+  the model
+- **AI insight on the daily report** — a short read of the day's close, added
+  *on top of* the rule-based summary, which never goes away
+
+Without a compiled-in key neither surface renders and no network call is
+reachable — the app is the unchanged offline app. Details, limits, and the
+full list of what leaves the device are in
+[AI features](#ai-features-optional-online).
 
 ## Prerequisites
 
@@ -58,8 +111,21 @@ flutter run -d <device-id>
 
 ## AI features (optional, online)
 
-DukaSmart's AI features — "Ask your duka" natural-language Q&A and the AI
-daily-report insight — activate only when an Anthropic API key is compiled
+### What the two surfaces do
+
+| Surface | Where it lives | What it does |
+|---|---|---|
+| **Ask your duka** | Dashboard → the "Ask about your duka…" bar (route `/home/ask`) | A question-and-answer thread over the shop's own numbers. The model answers by calling the five read-only tools listed below against the local database, so figures come from the ledger rather than from the model's guesswork. The empty state offers suggestion chips ("What did I sell today?", "What's running low?"). The thread is session-only — leaving the screen clears it. |
+| **AI insight** | Daily Report, in a card below the ledger | One short paragraph reading the day that just closed. It appears *in addition to* the deterministic rule-based insight, never instead of it. A successful insight is cached for the app session so reopening the same report does not re-bill the call. On any failure the card simply does not render — there is no AI error state on that screen. |
+
+**Language:** the ask screen invites "English au Kiswahili" and the system
+prompt instructs the model to reply in whichever language the question was
+asked in. A test covers UTF-8 handling, but **nobody has yet asked a Swahili
+question against a real key** — treat Swahili as designed-for, not verified.
+
+### How it is switched on
+
+DukaSmart's AI features activate only when an Anthropic API key is compiled
 into the build. This is a decision made by whoever builds the app, not a
 setting the shop owner can toggle at runtime; there is no in-app switch:
 
@@ -74,9 +140,12 @@ read-only; the AI never writes to the database. Money figures are computed
 locally by the app and passed to the model, which is instructed to quote
 them verbatim — the app does not re-validate the wording it gets back, so
 treat AI prose as a summary and the app's own screens as authoritative. The daily
-report also keeps its original rule-based, deterministic insight
-generator — it is not gone, it is the offline fallback used whenever no
-key is provided or the device has no connectivity.
+report always renders its original rule-based, deterministic insight, with the
+AI card below it — the rule-based summary is not a fallback that shows up only
+when AI is missing, it is always there, and it is the only thing there when no
+key is compiled in or the device has no connectivity.
+
+### What leaves the device
 
 **Privacy:** when AI features are active, these are sent to Anthropic's
 API — the user's question, the conversation thread, the results of the
@@ -100,13 +169,22 @@ list — check it there rather than trusting this table if the two disagree.
 Nothing is transmitted at all when no key is compiled in. Use a scoped /
 expiring demo key for any live demo and revoke it afterward.
 
-**Known gap:** the Android release/profile manifest carries the
+### Known gaps
+
+**Android `INTERNET` permission:** the Android release/profile manifest carries the
 `INTERNET` permission needed to reach the API from a real device build,
 but this has only been verified by static inspection of the manifest —
 it has not been exercised end-to-end on an Android profile/release build
 in this environment (no device was available). Verify on-device before a
 real demo. The Chrome dev target does not exercise Android permissions at
 all.
+
+**Swahili replies:** prompted for and offered in the UI, never exercised
+against a real key (see *Language* above).
+
+**No screenshots of the AI screens:** both surfaces need a compiled-in key to
+render, so neither has been photographed yet. See
+[Screenshots](#screenshots).
 
 ## What's next — the camera (planned, not shipped)
 
