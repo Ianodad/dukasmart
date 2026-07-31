@@ -15,6 +15,30 @@
   the Swahili check. **No code work is pending or in flight.**
 - Working tree clean (no modified tracked files). Nothing mid-edit.
 
+### Update 2026-07-31 — README AI pass, two of four AI screenshots captured
+- **The key-gated set is smaller than this handoff assumed.** Rendering an AI
+  surface needs only a *non-empty* key (`AiConfig.isConfigured` is
+  `apiKey.isNotEmpty`); only the *content* needs a valid one. So the ask bar
+  and the Ask screen were captured with a dummy key and are now on the branch:
+  `15-dashboard-ai.png`, `16-ask-suggestions.png`. **The key-gated captures
+  renumber to `17-ask-answer` / `18-daily-report-ai`** — CAPTURE.md is updated,
+  this file's checklist below still says 15/16.
+- `13-dashboard-live.png` — the README's headline shot — turned out to be from
+  a **no-key build**: no ask bar. It is left in place (the promo's `BEATS`
+  references it) and the AI pair was added as a separate README row.
+- **New tooling makes the key run one command:** `tool/capture_ai_screens.sh`
+  (prompts for the key with echo off). It builds, serves, seeds a day via
+  `tool/drive_ui.mjs` + `tool/seed_demo_day.json`, closes the day, asks, and
+  captures. Dry-run against a dummy key caught two silent failures now fixed:
+  Complete Day opens a confirmation dialog, and the report's insight sits
+  below the fold.
+- **The promo `BEATS` edit was deliberately NOT done.** The only Ask capture
+  that exists is the empty suggestion-chip state, and CAPTURE.md says not to
+  use it. That edit stays part of the key run.
+- Not verified this session: `flutter test`. This box lacks `clang++`, the
+  Drift native-asset prereq, so the 269-test gate below was not re-run.
+  `flutter analyze` → No issues found, and no Dart changed.
+
 | Mission | File | Rev | Status |
 |---|---|---|---|
 | 01 vision + extraction plumbing | `.wargames/wargames/01-ai-vision-extraction.md` | 6 | **SHIPPED** — Codex APPROVED, merged, real-API verified |
@@ -172,16 +196,19 @@ Full planning + execution record: `.wargames/LEDGER.md`.
       and reasoning logged in `.wargames/LEDGER.md`.
 
 ## Open Flags
-0. **UNVERIFIED CLAIM, now on `main`'s front page: Swahili Q&A.** The README,
-   deck slide 8 and the promo all say questions work "in English or Swahili".
-   The gateway does instruct the model to reply in the user's language, and a
-   test covers UTF-8 handling against a mocked response — but nobody has asked
-   a Swahili question with a real key. Codex flagged it Low; shipped
-   deliberately. **Escalated by the merge**: it was a feature-branch risk on
-   2026-07-27, it is the default branch's README now. **Ian: test this during
-   the screenshot trip.** If it fails, the fix is one line in `DukaPromo.tsx`
-   (`AiCard`), one in `slides.tsx` (S8Ai), **and now a README correction on
-   `main` too**, then re-render the promo.
+0. **UNVERIFIED CLAIM: Swahili Q&A.** The gateway instructs the model to reply
+   in the user's language, a test covers UTF-8 handling against a mocked
+   response, and the Ask screen offers "English au Kiswahili" — but nobody has
+   asked a Swahili question with a real key. Codex flagged it Low; shipped
+   deliberately. **Ian: test this during the screenshot trip.**
+
+   *Corrected 2026-07-31 — this flag previously said the claim was "on `main`'s
+   front page" via the README. It was not: the README never mentioned Swahili.
+   The claim lives in deck slide 8 (`slides.tsx`, S8Ai), the promo
+   (`DukaPromo.tsx`, `AiCard`) and the in-app hint (`ask_screen.dart`). The
+   README now documents it explicitly as designed-for-not-verified, so if the
+   check fails the README needs a wording tweak, not a retraction — the two
+   asset fixes stand, then re-render the promo.*
 
 1. **Nothing proves Haiku can read a real receipt yet.** All 269 tests fake
    the extraction result — by design. The spike now proves the *plumbing*
