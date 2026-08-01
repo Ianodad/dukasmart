@@ -20,7 +20,8 @@ gets sent when it is on, is in [AI features](#ai-features-optional-online).
 
 *Click the preview for the full-quality MP4 ([`docs/dukasmart-promo.mp4`](docs/dukasmart-promo.mp4)). There's also a
 10-slide presentation deck — the source lives in [`presentation/`](presentation/)
-and renders with one command.*
+and renders with one command. The demo walks the offline daily workflow first,
+then the AI layer — the dashboard's ask bar and the Ask your duka screen.*
 
 ## Screenshots
 
@@ -46,6 +47,9 @@ card.** Both need a *valid* key, not just any key — the surfaces render as
 soon as a key is present, but the content only exists once a real call
 returns. Capturing them is a live-key run away; the rig and the command are in
 [`docs/screenshots/CAPTURE.md`](docs/screenshots/CAPTURE.md).
+
+The [promo video](#demo) above now includes these two AI screens as ordinary
+beats, right after the core walkthrough.
 
 ## Features
 
