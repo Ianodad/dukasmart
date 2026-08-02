@@ -21,20 +21,52 @@ export PATH="$HOME/flutter/bin:$PATH"
 flutter build web --dart-define=ANTHROPIC_API_KEY=sk-ant-...   # key only for AI screens
 python3 -m http.server 8771 --directory build/web &
 node tool/capture_screens.mjs http://localhost:8771 docs/screenshots \
-  15-ask-answer:/home/ask 16-daily-report-ai:/home/report
+  17-ask-answer:/home/ask 18-daily-report-ai:/home/report
 ```
 
 No dependencies — it uses the `WebSocket` global built into Node 22+.
 
-Two things it deliberately does NOT do:
+One thing it deliberately does NOT do:
 
-- **It cannot seed data.** It photographs whatever state the browser profile is
-  already in. A fresh profile shows `KES 0` and the demo seed products, which
-  reads as fake. Put real sales and expenses in first (step 4 below), then run it.
 - **It cannot conjure the AI screens.** `AiConfig.isConfigured` is
   `apiKey.isNotEmpty`, and `aiAvailableProvider` gates every AI surface — build
   without the dart-define and the Ask bar and insight card are not in the widget
   tree at all. There is nothing to photograph.
+
+It also cannot seed data — it photographs whatever state the browser profile is
+already in, and a fresh profile shows `KES 0` and the demo seed products, which
+reads as fake. Use the UI driver below for that instead of seeding by hand.
+
+## Seeding a realistic shop (`tool/drive_ui.mjs`)
+
+`capture_screens.mjs` can only navigate and photograph. `tool/drive_ui.mjs`
+also taps and types, so a realistic trading day can be recorded reproducibly
+instead of clicked in by hand before every capture run:
+
+```
+node tool/drive_ui.mjs http://localhost:8771 docs/screenshots tool/seed_demo_day.json
+```
+
+`tool/seed_demo_day.json` records three sales (two cash, one M-PESA with a
+transaction code), one stock-transport expense, and then captures
+`15-dashboard-ai` and `16-ask-suggestions`. From a clean profile it produces
+`KES 680` — cash 340, M-PESA 340. Wipe `/tmp/dukasmart-drive-profile` first for
+a repeatable run; leave it to accumulate more data on top.
+
+Because Flutter renders to a canvas there are no selectors — steps are CSS
+coordinates measured off a screenshot (screenshot px ÷ 2). **If a screen's
+layout changes, the coordinates go stale silently:** the tap lands on nothing
+and the run continues. Always eyeball the output rather than trusting the exit
+code.
+
+**Look at the actual pixels before committing, not just the metadata.** Both
+rigs now abort when `Page.navigate` reports an `errorText`, because a dead
+server used to be completely invisible: Chrome renders its own "This site
+can't be reached" page, the rig captures *that* at a flawless 860 × 1864, and
+`file` plus a `docs/` ↔ `remotion/` byte-compare both still pass. Two error-page
+PNGs were committed that way. Geometry and folder sync are necessary checks,
+not sufficient ones. Everything must happen in one invocation; committed data survives in the
+profile's IndexedDB, but on-screen state does not.
 
 Do not reach for Chrome's plain `--screenshot` flag instead. It needs
 `--virtual-time-budget` to wait for the app, and virtual time freezes real
@@ -81,12 +113,59 @@ video — add new numbers rather than renumbering old ones.
 
 ## AI screens
 
-Two screens only render with a key present at build time:
+Every AI surface needs a key at build time. But there are two different bars
+here, and confusing them wastes a key:
 
-| Screen | How to reach it | Notes |
-|---|---|---|
-| Ask your duka | Dashboard → the "Ask about your duka…" bar (route `/home/ask`) | Capture *after* an answer has rendered, not the empty suggestion-chip state |
-| AI insight card | Daily Report (`/home/report`) — card sits below the ledger | Needs a closed day with real figures behind it |
+- **Rendering** needs only a *non-empty* key — `AiConfig.isConfigured` is just
+  `apiKey.isNotEmpty`. Any string makes the ask bar and the Ask screen appear.
+- **Content** needs a *valid* key. With a bogus one the request goes out and
+  comes back 401, and the thread shows "Something went wrong — please try
+  again."
+
+So `15-dashboard-ai` and `16-ask-suggestions` are capturable with a dummy key
+(that is how they were first taken). These two need a valid key — both were
+captured against one on 2026-08-02, and re-capturing needs the same:
+
+| Screen | Capture as | How to reach it | Notes |
+|---|---|---|---|
+| Ask your duka, answered | `17-ask-answer` | Dashboard → the "Ask about your duka…" bar (route `/home/ask`) | Capture *after* an answer has rendered, not the empty suggestion-chip state — that is already `16` |
+| AI insight card | `18-daily-report-ai` | Daily Report (`/home/report`) — card sits below the ledger | Needs a closed day with real figures behind it |
+
+Ask one question in Swahili during the same session — that claim ships in the
+UI and the deck. Checked against a real key on 2026-08-02: the model answered
+in Kiswahili with the correct ledger figure (`19-ask-swahili.png`).
+
+### One command
+
+`tool/capture_ai_screens.sh` does the whole run — build, serve, seed, close the
+day, ask, capture, and mirror into `remotion/public/screens/`:
+
+```
+tool/capture_ai_screens.sh
+```
+
+It prompts for the key with echo off. Do not pass the key as an argument:
+argv is visible to any process via `ps` and lands in your shell history.
+`ANTHROPIC_API_KEY=... tool/capture_ai_screens.sh` also works.
+
+It preflights the key against the API before spending a build on it. That
+guard matters more than it looks: because `isConfigured` is just
+`apiKey.isNotEmpty`, a dead key still renders every AI surface, so a run
+would otherwise produce four plausible-looking PNGs — `17` holding an error
+bubble, `18` silently missing its card — mirror them into
+`remotion/public/screens/`, and exit 0.
+
+Every coordinate in it has been dry-run against a build with a dummy key, so
+the taps are known-good — only the AI *content* was unverifiable that way. Two
+traps it already accounts for, both of which failed silently the first time:
+
+- **Complete Day opens a confirmation dialog.** Tapping the button alone
+  leaves the day open, and the report then renders "Day not closed yet"
+  instead of the AI card.
+- **The insight sits below the fold.** The report must be scrolled to the
+  bottom or the capture is all ledger and no insight.
+
+The script still cannot tell you whether the *answer* rendered — check by eye.
 
 Use a scoped or expiring key for capture work and revoke it afterwards. The key
 is baked into that build; do not distribute an APK or web build made with it.

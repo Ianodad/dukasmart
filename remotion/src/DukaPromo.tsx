@@ -27,14 +27,14 @@ const T = {
 const FPS = 30;
 const INTRO = 4 * FPS;
 const BEAT = Math.round(3.4 * FPS);
-// Typographic card for the AI layer. Deliberately NOT a PhoneBeat: there is no
-// screenshot of the Ask screen yet, and a mock-up inside the phone frame beside
-// eight real captures would read as one. When a real 860x1864 capture of the
-// Ask screen lands, this can become an ordinary BEATS entry instead.
+// Typographic card that opens the AI section. Real 860x1864 captures of the
+// AI surfaces now exist (see AI_BEATS below), so this card no longer stands
+// in for a screenshot — it is a short section intro, the same way Intro opens
+// the core beats, immediately followed by ordinary PhoneBeat entries.
 const FEATURE = Math.round(4.2 * FPS);
 const OUTRO = 5 * FPS;
 
-type Beat = { img: string; title: string; line: string };
+type Beat = { img: string; kicker?: string; title: string; line: string };
 
 const BEATS: Beat[] = [
   { img: "13-dashboard-live.png", title: "Today at a glance", line: "Sales, cash vs M-PESA, and what needs attention." },
@@ -47,8 +47,17 @@ const BEATS: Beat[] = [
   { img: "14-close-day-live.png", title: "Close the day", line: "Gross, net, expected cash — a ledger, not a guess." },
 ];
 
+// One beat per real AI-surface capture. Only screens that actually exist —
+// no beat for the AI-insight surface (see "Keeping it honest" in
+// remotion/README.md).
+const AI_BEATS: Beat[] = [
+  { img: "15-dashboard-ai.png", kicker: "AI · optional", title: "The dashboard grows an ask bar", line: "Same shop, same numbers — plus a place to ask about them." },
+  { img: "16-ask-suggestions.png", kicker: "AI · optional", title: "Ask your duka", line: "In English au Kiswahili — answered from your own ledger, read-only." },
+  { img: "17-ask-answer.png", kicker: "AI · optional", title: "A straight answer", line: "Figures come from read-only tools over the ledger — not model guesswork." },
+];
+
 export const PROMO_DURATION_FRAMES =
-  INTRO + BEATS.length * BEAT + FEATURE + OUTRO;
+  INTRO + BEATS.length * BEAT + FEATURE + AI_BEATS.length * BEAT + OUTRO;
 
 const ease = Easing.bezier(0.16, 1, 0.3, 1);
 
@@ -95,7 +104,7 @@ const PhoneBeat: React.FC<{ beat: Beat; index: number }> = ({ beat, index }) => 
     <AbsoluteFill style={{ flexDirection: "row", alignItems: "center", opacity: exit }}>
       <div style={{ flex: 1, paddingLeft: 140, maxWidth: 900 }}>
         <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: 6, color: T.emeraldBright, opacity: enter, textTransform: "uppercase" }}>
-          {String(index + 1).padStart(2, "0")}
+          {beat.kicker ?? String(index + 1).padStart(2, "0")}
         </div>
         <div
           style={{
@@ -158,7 +167,7 @@ const AiCard: React.FC = () => {
   return (
     <AbsoluteFill style={{ justifyContent: "center", paddingLeft: 140, paddingRight: 140, opacity: out }}>
       <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: 6, color: T.emeraldBright, textTransform: "uppercase", opacity: kicker }}>
-        New
+        The AI layer
       </div>
       <div style={{ height: 6, width: rule, background: T.emerald, borderRadius: 3, marginTop: 24 }} />
       <div
@@ -250,7 +259,19 @@ export const DukaPromo: React.FC = () => {
       <Sequence from={INTRO + BEATS.length * BEAT} durationInFrames={FEATURE}>
         <AiCard />
       </Sequence>
-      <Sequence from={INTRO + BEATS.length * BEAT + FEATURE} durationInFrames={OUTRO}>
+      {AI_BEATS.map((beat, i) => (
+        <Sequence
+          key={beat.img}
+          from={INTRO + BEATS.length * BEAT + FEATURE + i * BEAT}
+          durationInFrames={BEAT}
+        >
+          <PhoneBeat beat={beat} index={BEATS.length + i} />
+        </Sequence>
+      ))}
+      <Sequence
+        from={INTRO + BEATS.length * BEAT + FEATURE + AI_BEATS.length * BEAT}
+        durationInFrames={OUTRO}
+      >
         <Outro />
       </Sequence>
     </AbsoluteFill>

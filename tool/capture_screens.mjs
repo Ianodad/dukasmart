@@ -88,10 +88,22 @@ await cdp('Emulation.setDeviceMetricsOverride', {
   width: WIDTH, height: HEIGHT, deviceScaleFactor: DPR, mobile: true,
 });
 
+// Page.navigate resolves with errorText when the load actually failed. Without
+// this check a dead server is invisible: Chrome renders its own "This site
+// can't be reached" page, the rig screenshots THAT at a perfect 860x1864, and
+// every downstream check (geometry, docs/remotion sync) still passes. Broken
+// captures have been committed this way — fail loudly instead.
+async function navigate(url) {
+  const res = await cdp('Page.navigate', { url });
+  if (res?.errorText) {
+    throw new Error(`navigation to ${url} failed: ${res.errorText} — is the server up?`);
+  }
+}
+
 // Boot once and let the Drift worker + service worker settle. The splash
 // screen awaits databaseReadyProvider; the service worker alone has been
 // observed taking >4s on a cold profile.
-await cdp('Page.navigate', { url: baseUrl });
+await navigate(baseUrl);
 await sleep(15000);
 
 for (const target of targets) {
@@ -99,7 +111,7 @@ for (const target of targets) {
   const name = target.slice(0, idx);
   const route = target.slice(idx + 1);
 
-  await cdp('Page.navigate', { url: `${baseUrl}/#${route}` });
+  await navigate(`${baseUrl}/#${route}`);
   await sleep(6000); // route transition + any async card resolving
 
   const { data } = await cdp('Page.captureScreenshot', { format: 'png' });

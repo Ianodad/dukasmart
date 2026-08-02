@@ -1,7 +1,9 @@
 # DukaSmart promo
 
 The promo video linked from the repo-root README, built in
-[Remotion](https://remotion.dev). An intro, one beat per app screen, an outro.
+[Remotion](https://remotion.dev). An intro, one beat per app screen, an AI
+section (a short intro card plus one beat per real AI-surface capture), an
+outro.
 
 The rendered result is committed at `docs/dukasmart-promo.mp4` (and its `.gif`
 preview) because the README links to it. `out/` is gitignored.

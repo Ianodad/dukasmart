@@ -1,0 +1,18 @@
+[
+  {"boot": true, "wait": 16000},
+
+  {"nav": "/home/close-day", "wait": 4000},
+  {"tap": [215, 685], "wait": 1000},
+  {"type": "190", "wait": 900},
+  {"scroll": [215, 600, 600], "wait": 2000},
+  {"tap": [215, 890], "wait": 2500},
+  {"tap": [287, 528], "wait": 5000},
+
+  {"nav": "/home/ask", "wait": 3500},
+  {"tap": [215, 483], "wait": 30000},
+  {"shot": "17-ask-answer"},
+
+  {"nav": "/home/report", "wait": 30000},
+  {"scroll": [215, 600, 3000], "wait": 2500},
+  {"shot": "18-daily-report-ai"}
+]
