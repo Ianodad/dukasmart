@@ -48,11 +48,12 @@ const BEATS: Beat[] = [
 ];
 
 // One beat per real AI-surface capture. Only screens that actually exist —
-// no beat for the answered-question or AI-insight surfaces (see "Keeping it
-// honest" in remotion/README.md).
+// no beat for the AI-insight surface (see "Keeping it honest" in
+// remotion/README.md).
 const AI_BEATS: Beat[] = [
   { img: "15-dashboard-ai.png", kicker: "AI · optional", title: "The dashboard grows an ask bar", line: "Same shop, same numbers — plus a place to ask about them." },
   { img: "16-ask-suggestions.png", kicker: "AI · optional", title: "Ask your duka", line: "In English au Kiswahili — answered from your own ledger, read-only." },
+  { img: "17-ask-answer.png", kicker: "AI · optional", title: "A straight answer", line: "Figures come from read-only tools over the ledger — not model guesswork." },
 ];
 
 export const PROMO_DURATION_FRAMES =

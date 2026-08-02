@@ -34,21 +34,21 @@ stock, low stock, and close day.
 
 ### The AI layer
 
-These two are from a build with a key compiled in — which is why the dashboard
-carries an "Ask about your duka…" bar that the shot above does not. That is
-the actual difference the AI layer makes to the UI:
+All four are from one build with a *valid* key compiled in — which is why the
+dashboard carries an "Ask about your duka…" bar that the shot above does not.
+The answer and the insight card are real model output over the seeded ledger,
+captured live; the rig and the command are in
+[`docs/screenshots/CAPTURE.md`](docs/screenshots/CAPTURE.md):
 
-| Dashboard (AI build) | Ask your duka |
-|---|---|
-| ![Dashboard with the ask bar](docs/screenshots/15-dashboard-ai.png) | ![Ask your duka](docs/screenshots/16-ask-suggestions.png) |
+| Dashboard (AI build) | Ask your duka | A real answer | AI insight on the report |
+|---|---|---|---|
+| ![Dashboard with the ask bar](docs/screenshots/15-dashboard-ai.png) | ![Ask your duka](docs/screenshots/16-ask-suggestions.png) | ![An answered question](docs/screenshots/17-ask-answer.png) | ![AI insight card below the rule-based insight](docs/screenshots/18-daily-report-ai.png) |
 
-**Still missing: an answered question and the daily report's AI insight
-card.** Both need a *valid* key, not just any key — the surfaces render as
-soon as a key is present, but the content only exists once a real call
-returns. Capturing them is a live-key run away; the rig and the command are in
-[`docs/screenshots/CAPTURE.md`](docs/screenshots/CAPTURE.md).
+The same run put a question to the model in Kiswahili and got a Kiswahili
+answer with the correct ledger figures —
+[the capture](docs/screenshots/19-ask-swahili.png).
 
-The [promo video](#demo) above now includes these two AI screens as ordinary
+The [promo video](#demo) above walks three of these screens as ordinary
 beats, right after the core walkthrough.
 
 ## Features
@@ -124,8 +124,11 @@ flutter run -d <device-id>
 
 **Language:** the ask screen invites "English au Kiswahili" and the system
 prompt instructs the model to reply in whichever language the question was
-asked in. A test covers UTF-8 handling, but **nobody has yet asked a Swahili
-question against a real key** — treat Swahili as designed-for, not verified.
+asked in. Verified against a real key (2026-08-02): asked *"Nimetumia pesa
+ngapi kwa transport wiki hii?"*, the model replied in Kiswahili quoting the
+correct ledger figure —
+[the capture](docs/screenshots/19-ask-swahili.png). One exchange, not a
+localization audit — but the round-trip works.
 
 ### How it is switched on
 
@@ -182,13 +185,6 @@ it has not been exercised end-to-end on an Android profile/release build
 in this environment (no device was available). Verify on-device before a
 real demo. The Chrome dev target does not exercise Android permissions at
 all.
-
-**Swahili replies:** prompted for and offered in the UI, never exercised
-against a real key (see *Language* above).
-
-**No screenshots of the AI screens:** both surfaces need a compiled-in key to
-render, so neither has been photographed yet. See
-[Screenshots](#screenshots).
 
 ## What's next — the camera (planned, not shipped)
 

@@ -123,7 +123,8 @@ here, and confusing them wastes a key:
   again."
 
 So `15-dashboard-ai` and `16-ask-suggestions` are capturable with a dummy key
-(that is how they were taken). These two are not:
+(that is how they were first taken). These two need a valid key — both were
+captured against one on 2026-08-02, and re-capturing needs the same:
 
 | Screen | Capture as | How to reach it | Notes |
 |---|---|---|---|
@@ -131,7 +132,8 @@ So `15-dashboard-ai` and `16-ask-suggestions` are capturable with a dummy key
 | AI insight card | `18-daily-report-ai` | Daily Report (`/home/report`) — card sits below the ledger | Needs a closed day with real figures behind it |
 
 Ask one question in Swahili during the same session — that claim ships in the
-UI and the deck but has never been checked against a real key.
+UI and the deck. Checked against a real key on 2026-08-02: the model answered
+in Kiswahili with the correct ledger figure (`19-ask-swahili.png`).
 
 ### One command
 
